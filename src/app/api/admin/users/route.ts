@@ -1,0 +1,78 @@
+import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth";
+import { isPrismaConnectionError, prisma, withPrismaRetry } from "@/lib/prisma";
+
+const PAGE_SIZE = 10;
+
+export async function GET(request: Request) {
+  try {
+    await requireAdmin();
+
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(1, Number(searchParams.get("page")) || 1);
+    const pageSize = PAGE_SIZE;
+    const skip = (page - 1) * pageSize;
+
+    const [total, users] = await withPrismaRetry(async () => {
+      const [count, rows] = await Promise.all([
+        prisma.user.count(),
+        prisma.user.findMany({
+          skip,
+          take: pageSize,
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            blocked: true,
+            createdAt: true,
+            _count: {
+              select: {
+                contents: true,
+                reviews: true,
+                saved: true,
+                notifications: true,
+              },
+            },
+          },
+        }),
+      ]);
+      return [count, rows] as const;
+    });
+
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+    return NextResponse.json({
+      users: users.map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        blocked: user.blocked,
+        createdAt: user.createdAt,
+        stats: {
+          uploads: user._count.contents,
+          reviews: user._count.reviews,
+          saved: user._count.saved,
+          notifications: user._count.notifications,
+        },
+      })),
+      total,
+      page,
+      pageSize,
+      totalPages,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "UNAUTHORIZED") {
+      return NextResponse.json({ error: "ابتدا وارد شوید." }, { status: 401 });
+    }
+    if (error instanceof Error && error.message === "FORBIDDEN") {
+      return NextResponse.json({ error: "دسترسی مجاز نیست." }, { status: 403 });
+    }
+    if (isPrismaConnectionError(error)) {
+      return NextResponse.json({ error: "اتصال به دیتابیس برقرار نیست." }, { status: 503 });
+    }
+    return NextResponse.json({ error: "خطای سرور" }, { status: 500 });
+  }
+}

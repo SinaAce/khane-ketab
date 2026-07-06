@@ -1,0 +1,63 @@
+import type { Metadata, Viewport } from "next";
+import { Vazirmatn } from "next/font/google";
+import NextTopLoader from "nextjs-toploader";
+import { BackToTop } from "@/components/layout/BackToTop";
+import { Footer } from "@/components/layout/Footer";
+import { Navbar } from "@/components/layout/Navbar";
+import { PageEntrance } from "@/components/layout/PageEntrance";
+import { AuthProvider } from "@/components/providers/AuthProvider";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import "./globals.css";
+import { SITE_NAME, SITE_SLOGAN } from "@/lib/site";
+
+const vazirmatn = Vazirmatn({
+  subsets: ["arabic", "latin"],
+  variable: "--font-vazirmatn",
+});
+
+export const metadata: Metadata = {
+  title: `${SITE_NAME} | ${SITE_SLOGAN}`,
+  description: SITE_SLOGAN,
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="fa" dir="rtl" className={`${vazirmatn.variable} h-full`} data-scroll-behavior="smooth" suppressHydrationWarning>
+      <head>
+        <link rel="icon" href="/favicon.png" type="image/png" sizes="48x48" />
+        <link rel="shortcut icon" href="/favicon.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-icon.png" sizes="180x180" />
+      </head>
+      <body className="min-h-full flex flex-col bg-background font-sans text-foreground antialiased">
+        <ThemeProvider>
+          <NextTopLoader
+            color="#c9a227"
+            height={3}
+            showSpinner={false}
+            crawlSpeed={200}
+            easing="ease"
+            shadow="0 0 10px #c9a227,0 0 5px #0d7377"
+          />
+          <AuthProvider>
+            <Navbar />
+            <main className="flex-1">
+              <PageEntrance>{children}</PageEntrance>
+            </main>
+            <Footer />
+            <BackToTop />
+          </AuthProvider>
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}

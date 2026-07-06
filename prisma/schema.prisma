@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ContentType {
+  EBOOK
+  AUDIOBOOK
+}
+
+enum ContentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum NotificationType {
+  CONTENT_APPROVED
+  CONTENT_REJECTED
+  REVIEW_APPROVED
+  REVIEW_REJECTED
+}
+
+model User {
+  id           String         @id @default(cuid())
+  name         String
+  email        String         @unique
+  passwordHash String
+  role         Role           @default(USER)
+  blocked      Boolean        @default(false)
+  image        String?
+  contents      Content[]
+  reviews       Review[]
+  saved         SavedContent[]
+  notifications Notification[]
+  createdAt     DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  contents    Content[]
+}
+
+model Content {
+  id            String        @id @default(cuid())
+  title         String
+  description   String?
+  type          ContentType
+  status        ContentStatus @default(PENDING)
+  fileKey       String
+  coverKey      String?
+  fileSize      Int?
+  duration      Int?
+  authorId      String
+  author        User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  categoryId    String
+  category      Category      @relation(fields: [categoryId], references: [id])
+  reviews       Review[]
+  savedBy       SavedContent[]
+  downloadCount Int            @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([title])
+  @@index([type])
+  @@index([status])
+  @@index([categoryId])
+}
+
+model Review {
+  id        String        @id @default(cuid())
+  rating    Int
+  comment   String?
+  status    ContentStatus @default(APPROVED)
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentId String
+  content   Content       @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @default(now()) @updatedAt
+
+  @@unique([userId, contentId])
+  @@index([status])
+}
+
+model SavedContent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentId String
+  content   Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, contentId])
+  @@index([userId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  message   String
+  read      Boolean          @default(false)
+  relatedId String?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+}

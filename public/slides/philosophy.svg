@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 540" role="img" aria-label="AD3AG">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2e1065"/>
+      <stop offset="55%" stop-color="#5b21b6"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="540" fill="url(#bg)"/>
+  <rect x="120" y="80" width="560" height="380" rx="24" fill="#0f0720" opacity="0.35"/>
+  <g fill="#4c1d95" opacity="0.45">
+    <rect x="150" y="120" width="24" height="280" rx="4"/>
+    <rect x="210" y="120" width="24" height="280" rx="4"/>
+    <rect x="270" y="120" width="24" height="280" rx="4"/>
+    <rect x="330" y="120" width="24" height="280" rx="4"/>
+    <rect x="390" y="120" width="24" height="280" rx="4"/>
+    <rect x="450" y="120" width="24" height="280" rx="4"/>
+    <rect x="510" y="120" width="24" height="280" rx="4"/>
+    <rect x="570" y="120" width="24" height="280" rx="4"/>
+  </g>
+  <g>
+    <rect x="260" y="170" width="280" height="190" rx="8" fill="#f5f3ff" opacity="0.92"/>
+    <rect x="280" y="190" width="240" height="12" rx="3" fill="#7c3aed" opacity="0.35"/>
+    <rect x="280" y="215" width="220" height="8" rx="2" fill="#6d28d9" opacity="0.25"/>
+    <rect x="280" y="235" width="200" height="8" rx="2" fill="#6d28d9" opacity="0.25"/>
+    <rect x="280" y="255" width="210" height="8" rx="2" fill="#6d28d9" opacity="0.25"/>
+    <rect x="280" y="275" width="180" height="8" rx="2" fill="#6d28d9" opacity="0.25"/>
+    <rect x="280" y="295" width="200" height="8" rx="2" fill="#6d28d9" opacity="0.25"/>
+  </g>
+  <ellipse cx="400" cy="430" rx="120" ry="18" fill="#000" opacity="0.25"/>
+  <circle cx="620" cy="150" r="40" fill="#fbbf24" opacity="0.75"/>
+  <rect x="605" y="170" width="30" height="70" rx="8" fill="#fde68a"/>
+</svg>
