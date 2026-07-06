@@ -1,6 +1,7 @@
 {
   "name": "ebook-marketplace",
   "version": "0.1.0",
+  "description": "خانه کتاب — مارکت‌پلیس فارسی کتاب الکترونیکی و پادکست با Next.js و Prisma",
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",

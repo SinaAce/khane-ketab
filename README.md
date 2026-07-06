@@ -66,7 +66,7 @@
 ### نصب
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/khane-ketab.git
+git clone https://github.com/sinaace/khane-ketab.git
 cd khane-ketab
 npm install
 ```
