@@ -3,24 +3,28 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { LogOut } from "lucide-react";
+import { LogOut, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { SiteLogo } from "@/components/layout/SiteLogo";
 import { UserAccountButton } from "@/components/layout/UserAccountButton";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { useAppShellMode } from "@/hooks/useAppShellMode";
 import { cn } from "@/lib/utils";
 import { SITE_NAME, SITE_SLOGAN } from "@/lib/site";
 
-const links = [
+const baseLinks = [
   { href: "/", label: "خانه" },
   { href: "/browse", label: "کتاب و پادکست" },
   { href: "/upload", label: "آپلود" },
-  { href: "/download", label: "دانلود اپ" },
 ];
+
+const downloadLink = { href: "/download", label: "دانلود اپ" };
 
 export function Navbar() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const isAppShell = useAppShellMode();
+  const links = isAppShell ? baseLinks : [...baseLinks, downloadLink];
 
   return (
     <header className="safe-top sticky top-0 z-50 border-b border-border-persian bg-surface/95 backdrop-blur-md">
@@ -56,6 +60,19 @@ export function Navbar() {
         </nav>
 
         <div className="flex shrink-0 items-center gap-2">
+          {!isAppShell && (
+            <Link
+              href="/download"
+              className={cn(
+                "navbar-download-link inline-flex items-center gap-1 rounded-xl px-2 py-1.5 text-xs font-semibold text-teal-brand transition hover:bg-teal-brand/10 md:hidden",
+                pathname === "/download" && "bg-teal-brand/10",
+              )}
+            >
+              <Smartphone size={15} className="shrink-0" />
+              دانلود اپ
+            </Link>
+          )}
+
           <div className="md:hidden">
             <ThemeToggle />
           </div>
