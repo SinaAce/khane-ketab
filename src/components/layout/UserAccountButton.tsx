@@ -13,11 +13,11 @@ export function UserAccountButton() {
   if (!session) return null;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5 sm:gap-2">
       <Link href="/dashboard">
-        <Button variant="ghost" size="sm" className="relative">
-          <User size={16} className="ml-1" />
-          {session.user?.name ?? "حساب من"}
+        <Button variant="ghost" size="sm" className="relative max-w-[7.5rem] px-2.5 sm:max-w-none sm:px-3">
+          <User size={16} className="ml-1 shrink-0" />
+          <span className="truncate">{session.user?.name ?? "حساب من"}</span>
         </Button>
       </Link>
 

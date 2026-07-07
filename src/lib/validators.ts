@@ -11,6 +11,15 @@ export const loginSchema = z.object({
   password: z.string().min(1, "رمز عبور الزامی است"),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("ایمیل معتبر نیست"),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, "توکن بازیابی نامعتبر است"),
+  password: z.string().min(6, "رمز عبور باید حداقل ۶ کاراکتر باشد"),
+});
+
 export const contentUploadSchema = z.object({
   title: z.string().min(2, "عنوان باید حداقل ۲ کاراکتر باشد"),
   description: z.string().optional(),
@@ -45,3 +54,16 @@ export const profileUpdateSchema = z
     },
     { message: "برای تغییر رمز، رمز فعلی الزامی است.", path: ["currentPassword"] },
   );
+
+export const createTicketSchema = z.object({
+  subject: z.string().min(3, "موضوع باید حداقل ۳ کاراکتر باشد").max(120),
+  body: z.string().min(10, "متن تیکت باید حداقل ۱۰ کاراکتر باشد").max(4000),
+});
+
+export const ticketMessageSchema = z.object({
+  body: z.string().min(1, "پیام نمی‌تواند خالی باشد").max(4000),
+});
+
+export const adminTicketStatusSchema = z.object({
+  status: z.enum(["OPEN", "ANSWERED", "CLOSED"]),
+});

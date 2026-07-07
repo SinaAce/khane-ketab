@@ -15,16 +15,17 @@ export function AnimatedNumber({
   className,
   active = true,
 }: AnimatedNumberProps) {
-  const [display, setDisplay] = useState(0);
+  const [display, setDisplay] = useState(value);
 
   useEffect(() => {
     if (!active) {
-      setDisplay(0);
+      setDisplay(value);
       return;
     }
 
     let frame = 0;
     const start = performance.now();
+    setDisplay(0);
 
     function tick(now: number) {
       const progress = Math.min((now - start) / duration, 1);

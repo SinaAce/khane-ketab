@@ -1,14 +1,17 @@
+import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { isPrismaConnectionError, prisma, withPrismaRetry } from "@/lib/prisma";
+import { clearPasswordResetTokens } from "@/lib/password-reset";
 
 const updateUserSchema = z
   .object({
     role: z.enum(["USER", "ADMIN"]).optional(),
     blocked: z.boolean().optional(),
+    password: z.string().min(6, "رمز عبور باید حداقل ۶ کاراکتر باشد").optional(),
   })
-  .refine((data) => data.role !== undefined || data.blocked !== undefined, {
+  .refine((data) => data.role !== undefined || data.blocked !== undefined || data.password !== undefined, {
     message: "حداقل یک فیلد برای به‌روزرسانی لازم است.",
   });
 
@@ -22,10 +25,13 @@ export async function PATCH(request: Request, { params }: Params) {
     const parsed = updateUserSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json({ error: "داده نامعتبر است." }, { status: 400 });
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || "داده نامعتبر است." },
+        { status: 400 },
+      );
     }
 
-    const { role, blocked } = parsed.data;
+    const { role, blocked, password } = parsed.data;
 
     if (session.user.id === id) {
       if (role === "USER") {
@@ -70,12 +76,19 @@ export async function PATCH(request: Request, { params }: Params) {
       );
     }
 
-    const user = await withPrismaRetry(() =>
-      prisma.user.update({
+    const passwordHash = password ? await bcrypt.hash(password, 12) : undefined;
+
+    const user = await withPrismaRetry(async () => {
+      if (passwordHash) {
+        await clearPasswordResetTokens(id);
+      }
+
+      return prisma.user.update({
         where: { id },
         data: {
           ...(role !== undefined ? { role } : {}),
           ...(blocked !== undefined ? { blocked } : {}),
+          ...(passwordHash ? { passwordHash } : {}),
         },
         select: {
           id: true,
@@ -85,11 +98,12 @@ export async function PATCH(request: Request, { params }: Params) {
           blocked: true,
           createdAt: true,
         },
-      }),
-    );
+      });
+    });
 
     let message = "کاربر به‌روز شد.";
-    if (blocked === true) message = `${user.name} مسدود شد.`;
+    if (password) message = `رمز عبور ${user.name} تغییر کرد.`;
+    else if (blocked === true) message = `${user.name} مسدود شد.`;
     else if (blocked === false) message = `مسدودیت ${user.name} برداشته شد.`;
     else if (role === "ADMIN") message = `${user.name} به مدیر ارتقا یافت.`;
     else if (role === "USER") message = `دسترسی مدیر ${user.name} برداشته شد.`;

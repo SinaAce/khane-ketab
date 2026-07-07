@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { SiteLogo } from "@/components/layout/SiteLogo";
 import { UserAccountButton } from "@/components/layout/UserAccountButton";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { useAppShellMode } from "@/hooks/useAppShellMode";
 import { cn } from "@/lib/utils";
 import { SITE_NAME, SITE_SLOGAN } from "@/lib/site";
 
@@ -16,6 +17,7 @@ const links = [
   { href: "/", label: "خانه" },
   { href: "/browse", label: "کتاب و پادکست" },
   { href: "/upload", label: "آپلود" },
+  { href: "/download", label: "دانلود اپ" },
 ];
 
 const mobileLinkClass =
@@ -24,6 +26,7 @@ const mobileLinkClass =
 export function Navbar() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const isAppShell = useAppShellMode();
   const [open, setOpen] = useState(false);
 
   return (
@@ -59,42 +62,63 @@ export function Navbar() {
           )}
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
-          <ThemeToggle />
-          {session ? (
+        <div className="flex shrink-0 items-center gap-2">
+          {isAppShell ? (
             <>
-              <UserAccountButton />
-              <Button variant="ghost" size="sm" onClick={() => signOut({ callbackUrl: "/" })}>
-                <LogOut size={16} className="ml-1" />
-                خروج
-              </Button>
+              <div className="md:hidden">
+                <ThemeToggle />
+              </div>
+              {session && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="touch-target md:hidden"
+                  onClick={() => signOut({ callbackUrl: "/" })}
+                  aria-label="خروج از حساب"
+                >
+                  <LogOut size={18} />
+                </Button>
+              )}
             </>
           ) : (
-            <>
-              <Link href="/auth/login">
-                <Button variant="ghost" size="sm">
-                  ورود
-                </Button>
-              </Link>
-              <Link href="/auth/register">
-                <Button size="sm">ثبت‌نام</Button>
-              </Link>
-            </>
+            <button
+              type="button"
+              className="touch-target inline-flex shrink-0 items-center justify-center rounded-xl text-foreground transition hover:bg-surface-muted md:hidden"
+              onClick={() => setOpen((value) => !value)}
+              aria-expanded={open}
+              aria-label={open ? "بستن منو" : "باز کردن منو"}
+            >
+              {open ? <X size={22} /> : <Menu size={22} />}
+            </button>
           )}
-        </div>
 
-        <button
-          type="button"
-          className="touch-target inline-flex shrink-0 items-center justify-center rounded-xl text-foreground transition hover:bg-surface-muted md:hidden"
-          onClick={() => setOpen((value) => !value)}
-          aria-expanded={open}
-          aria-label={open ? "بستن منو" : "باز کردن منو"}
-        >
-          {open ? <X size={22} /> : <Menu size={22} />}
-        </button>
+          <div className="hidden items-center gap-3 md:flex">
+            <ThemeToggle />
+            {session ? (
+              <>
+                <UserAccountButton />
+                <Button variant="ghost" size="sm" onClick={() => signOut({ callbackUrl: "/" })}>
+                  <LogOut size={16} className="ml-1" />
+                  خروج
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link href="/auth/login">
+                  <Button variant="ghost" size="sm">
+                    ورود
+                  </Button>
+                </Link>
+                <Link href="/auth/register">
+                  <Button size="sm">ثبت‌نام</Button>
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
-      {open && (
+      {!isAppShell && open && (
         <div className="border-t border-border-persian bg-surface md:hidden">
           <div className="page-shell max-h-[min(80vh,32rem)] overflow-y-auto overscroll-contain py-3">
             <div className="flex flex-col gap-1">

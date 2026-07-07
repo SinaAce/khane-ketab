@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -59,10 +60,10 @@ export default function RegisterPage() {
           </div>
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">رمز عبور</label>
-            <Input
-              type="password"
+            <PasswordInput
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              minLength={6}
               required
             />
           </div>

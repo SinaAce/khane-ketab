@@ -3,16 +3,17 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Bell, Bookmark, LayoutDashboard, Settings, Upload } from "lucide-react";
+import { Bell, Bookmark, LayoutDashboard, LifeBuoy, Settings, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NotificationList, useNotifications } from "@/components/dashboard/NotificationList";
 import { ProfileForm } from "@/components/dashboard/ProfileForm";
+import { TicketPanel } from "@/components/dashboard/TicketPanel";
 import { SavedList, UploadsList } from "@/components/dashboard/UserLists";
 import { Card } from "@/components/ui/Card";
 import { PersianLoader } from "@/components/ui/PersianLoader";
 import { cn } from "@/lib/utils";
 
-type Tab = "overview" | "saved" | "uploads" | "notifications" | "profile";
+type Tab = "overview" | "saved" | "uploads" | "notifications" | "tickets" | "profile";
 
 type DashboardData = {
   user: { name: string; email: string; createdAt: string };
@@ -31,6 +32,7 @@ const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "saved", label: "کتابخانه من", icon: Bookmark },
   { id: "uploads", label: "آپلودها", icon: Upload },
   { id: "notifications", label: "نوتیف‌ها", icon: Bell },
+  { id: "tickets", label: "پشتیبانی", icon: LifeBuoy },
   { id: "profile", label: "پروفایل", icon: Settings },
 ];
 
@@ -59,6 +61,7 @@ export default function DashboardPage() {
       requestedTab === "saved" ||
       requestedTab === "uploads" ||
       requestedTab === "notifications" ||
+      requestedTab === "tickets" ||
       requestedTab === "profile"
     ) {
       setTab(requestedTab);
@@ -255,6 +258,7 @@ export default function DashboardPage() {
             onMarkAllRead={markAllRead}
           />
         ))}
+      {tab === "tickets" && <TicketPanel />}
       {tab === "profile" && (
         <ProfileForm
           initialName={data.user.name}

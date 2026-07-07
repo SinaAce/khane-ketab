@@ -12,11 +12,22 @@ export async function GET(request: Request) {
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const pageSize = PAGE_SIZE;
     const skip = (page - 1) * pageSize;
+    const q = searchParams.get("q")?.trim() || "";
+
+    const where = q
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" as const } },
+            { email: { contains: q, mode: "insensitive" as const } },
+          ],
+        }
+      : undefined;
 
     const [total, users] = await withPrismaRetry(async () => {
       const [count, rows] = await Promise.all([
-        prisma.user.count(),
+        prisma.user.count({ where }),
         prisma.user.findMany({
+          where,
           skip,
           take: pageSize,
           orderBy: { createdAt: "desc" },
@@ -41,8 +52,6 @@ export async function GET(request: Request) {
       return [count, rows] as const;
     });
 
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
     return NextResponse.json({
       users: users.map((user) => ({
         id: user.id,
@@ -61,7 +70,8 @@ export async function GET(request: Request) {
       total,
       page,
       pageSize,
-      totalPages,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      q,
     });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {

@@ -2,15 +2,35 @@
 
 import Link from "next/link";
 import { BookMarked, Sparkles } from "lucide-react";
-import { PaginatedContentGrid } from "@/components/content/PaginatedContentGrid";
+import { ContentCard } from "@/components/content/ContentCard";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 
-type ContentItem = Parameters<typeof PaginatedContentGrid>[0]["items"][number];
+type ContentItem = Parameters<typeof ContentCard>[0]["content"];
 
 type HomeSectionsProps = {
   recommended: ContentItem[];
   latest: ContentItem[];
 };
+
+const GRID_CLASS = "grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4";
+
+function ContentGrid({ items, emptyMessage }: { items: ContentItem[]; emptyMessage: string }) {
+  if (items.length === 0) {
+    return (
+      <div className="surface-panel rounded-xl border-dashed px-6 py-12 text-center text-sm text-muted">
+        {emptyMessage}
+      </div>
+    );
+  }
+
+  return (
+    <div className={GRID_CLASS}>
+      {items.slice(0, 4).map((item) => (
+        <ContentCard key={item.id} content={item} />
+      ))}
+    </div>
+  );
+}
 
 export function HomeSections({ recommended, latest }: HomeSectionsProps) {
   const historyItems = latest.filter(
@@ -29,9 +49,8 @@ export function HomeSections({ recommended, latest }: HomeSectionsProps) {
             <BookMarked className="shrink-0 text-gold-brand" size={20} />
             <h2 className="text-lg font-bold text-teal-brand sm:text-xl">تاریخ ایران و جهان</h2>
           </div>
-          <PaginatedContentGrid
+          <ContentGrid
             items={historyItems.length > 0 ? historyItems : latest}
-            pageSize={4}
             emptyMessage="محتوای تاریخی هنوز ثبت نشده است."
           />
         </section>
@@ -43,9 +62,8 @@ export function HomeSections({ recommended, latest }: HomeSectionsProps) {
             <Sparkles className="shrink-0 text-gold-brand" size={20} />
             <h2 className="text-lg font-bold text-teal-brand sm:text-xl">پیشنهاد برای شما</h2>
           </div>
-          <PaginatedContentGrid
+          <ContentGrid
             items={recommended}
-            pageSize={4}
             emptyMessage="هنوز محتوای تأییدشده‌ای وجود ندارد."
           />
         </section>
@@ -60,10 +78,10 @@ export function HomeSections({ recommended, latest }: HomeSectionsProps) {
                 href="/browse"
                 className="inline-flex min-h-[2.75rem] items-center text-sm font-medium text-teal-brand hover:underline sm:min-h-0"
               >
-                همه رو ببین
+                مشاهده همه
               </Link>
             </div>
-            <PaginatedContentGrid items={latest} pageSize={4} />
+            <ContentGrid items={latest} emptyMessage="محتوایی یافت نشد." />
           </div>
         </section>
       </ScrollReveal>

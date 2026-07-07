@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, Shield, ShieldOff, User as UserIcon, Users } from "lucide-react";
+import { Ban, KeyRound, Search, Shield, ShieldOff, User as UserIcon, Users, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AnimateOnView } from "@/components/admin/AnimateOnView";
 import { AnimatedNumber } from "@/components/admin/AnimatedNumber";
@@ -8,6 +8,8 @@ import { useAnimateOnView } from "@/components/admin/useAnimateOnView";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Pagination } from "@/components/ui/Pagination";
 import { cn } from "@/lib/utils";
 
@@ -45,39 +47,69 @@ function UserListSkeleton() {
 
 export function AdminUserList({ currentUserId, onMessage }: AdminUserListProps) {
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [resetUser, setResetUser] = useState<AdminUser | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetConfirm, setResetConfirm] = useState("");
+  const [resetError, setResetError] = useState("");
 
-  const loadUsers = useCallback(async (targetPage: number) => {
-    setLoading(true);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const next = search.trim();
+      setDebouncedSearch((prev) => {
+        if (prev !== next) setPage(1);
+        return next;
+      });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  const loadUsers = useCallback(async (targetPage: number, query: string) => {
+    setRefreshing(true);
     setError(null);
 
-    const response = await fetch(`/api/admin/users?page=${targetPage}`);
-    const data = await response.json();
+    const params = new URLSearchParams({ page: String(targetPage) });
+    if (query) params.set("q", query);
 
-    if (!response.ok) {
-      setError(data.error || "خطا در بارگذاری کاربران.");
+    try {
+      const response = await fetch(`/api/admin/users?${params}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "خطا در بارگذاری کاربران.");
+        setUsers([]);
+        return;
+      }
+
+      setUsers(data.users || []);
+      setTotal(data.total || 0);
+      setTotalPages(data.totalPages || 1);
+      setPage(data.page || targetPage);
+    } catch {
+      setError("خطا در ارتباط با سرور.");
       setUsers([]);
-      setLoading(false);
-      return;
+    } finally {
+      setRefreshing(false);
+      setInitialLoading(false);
     }
-
-    setUsers(data.users || []);
-    setTotal(data.total || 0);
-    setTotalPages(data.totalPages || 1);
-    setPage(data.page || targetPage);
-    setLoading(false);
   }, []);
 
   useEffect(() => {
-    void loadUsers(page);
-  }, [loadUsers, page]);
+    void loadUsers(page, debouncedSearch);
+  }, [loadUsers, page, debouncedSearch]);
 
-  async function patchUser(user: AdminUser, body: { role?: "USER" | "ADMIN"; blocked?: boolean }) {
+  async function patchUser(
+    user: AdminUser,
+    body: { role?: "USER" | "ADMIN"; blocked?: boolean },
+  ) {
     setUpdatingId(user.id);
     const response = await fetch(`/api/admin/users/${user.id}`, {
       method: "PATCH",
@@ -93,7 +125,7 @@ export function AdminUserList({ currentUserId, onMessage }: AdminUserListProps) 
     }
 
     onMessage(data.message || "به‌روز شد.");
-    void loadUsers(page);
+    void loadUsers(page, debouncedSearch);
   }
 
   async function updateRole(user: AdminUser, role: "USER" | "ADMIN") {
@@ -103,6 +135,49 @@ export function AdminUserList({ currentUserId, onMessage }: AdminUserListProps) 
     await patchUser(user, { role });
   }
 
+  function openResetModal(user: AdminUser) {
+    setResetUser(user);
+    setResetPassword("");
+    setResetConfirm("");
+    setResetError("");
+  }
+
+  async function submitResetPassword(event: React.FormEvent) {
+    event.preventDefault();
+    if (!resetUser) return;
+
+    if (resetPassword.length < 6) {
+      setResetError("رمز عبور باید حداقل ۶ کاراکتر باشد.");
+      return;
+    }
+
+    if (resetPassword !== resetConfirm) {
+      setResetError("رمز عبور و تکرار آن یکسان نیست.");
+      return;
+    }
+
+    setUpdatingId(resetUser.id);
+    setResetError("");
+
+    const response = await fetch(`/api/admin/users/${resetUser.id}/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: resetPassword }),
+    });
+    const data = await response.json();
+    setUpdatingId(null);
+
+    if (!response.ok) {
+      setResetError(data.error || "تغییر رمز ناموفق بود.");
+      return;
+    }
+
+    onMessage(data.message || "رمز عبور تغییر کرد.");
+    setResetUser(null);
+    setResetPassword("");
+    setResetConfirm("");
+  }
+
   async function toggleBlock(user: AdminUser) {
     const next = !user.blocked;
     const label = next ? "مسدود" : "رفع مسدودیت";
@@ -110,50 +185,84 @@ export function AdminUserList({ currentUserId, onMessage }: AdminUserListProps) 
     await patchUser(user, { blocked: next });
   }
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="space-y-4">
+        <UserSearchBar
+          search={search}
+          onSearchChange={setSearch}
+          onClear={() => setSearch("")}
+          refreshing={false}
+        />
         <div className="admin-shimmer h-16 rounded-xl" />
         <UserListSkeleton />
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <Card className="border-amber-300/40 bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
-        <p className="text-sm">{error}</p>
-      </Card>
-    );
-  }
-
   return (
     <div className="space-y-4 sm:space-y-5">
-      <SummaryCard total={total} page={page} totalPages={totalPages} />
+      <UserSearchBar
+        search={search}
+        onSearchChange={setSearch}
+        onClear={() => setSearch("")}
+        refreshing={refreshing}
+      />
 
-      {users.length === 0 ? (
-        <AnimateOnView animation="rise">
-          <Card className="flex flex-col items-center gap-2 py-8 text-center">
-            <Users size={36} className="admin-empty-icon text-muted" />
-            <p className="text-muted">کاربری در این صفحه نیست.</p>
-          </Card>
-        </AnimateOnView>
+      {error ? (
+        <Card className="border-amber-300/40 bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+          <p className="text-sm">{error}</p>
+        </Card>
       ) : (
         <>
-          <div className="hidden overflow-x-auto rounded-xl border border-border-persian lg:block">
-            <table className="w-full min-w-[920px] text-sm">
-              <thead className="bg-surface-muted text-muted">
-                <tr>
-                  <th className="px-4 py-3 text-right font-medium">کاربر</th>
-                  <th className="px-4 py-3 text-right font-medium">وضعیت</th>
-                  <th className="px-4 py-3 text-right font-medium">آمار</th>
-                  <th className="px-4 py-3 text-right font-medium">عضویت</th>
-                  <th className="px-4 py-3 text-right font-medium">عملیات</th>
-                </tr>
-              </thead>
-              <tbody>
+          <SummaryCard total={total} page={page} totalPages={totalPages} search={debouncedSearch} />
+
+          {refreshing && users.length === 0 ? (
+            <UserListSkeleton />
+          ) : users.length === 0 ? (
+            <AnimateOnView animation="rise">
+              <Card className="flex flex-col items-center gap-2 py-8 text-center">
+                <Users size={36} className="admin-empty-icon text-muted" />
+                <p className="text-muted">
+                  {debouncedSearch
+                    ? `کاربری با «${debouncedSearch}» پیدا نشد.`
+                    : "کاربری در این صفحه نیست."}
+                </p>
+              </Card>
+            </AnimateOnView>
+          ) : (
+            <div className={cn(refreshing && "pointer-events-none opacity-60")}>
+              <div className="hidden overflow-x-auto rounded-xl border border-border-persian lg:block">
+                <table className="w-full min-w-[920px] text-sm">
+                  <thead className="bg-surface-muted text-muted">
+                    <tr>
+                      <th className="px-4 py-3 text-right font-medium">کاربر</th>
+                      <th className="px-4 py-3 text-right font-medium">وضعیت</th>
+                      <th className="px-4 py-3 text-right font-medium">آمار</th>
+                      <th className="px-4 py-3 text-right font-medium">عضویت</th>
+                      <th className="px-4 py-3 text-right font-medium">عملیات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((user, index) => (
+                      <UserRow
+                        key={user.id}
+                        user={user}
+                        index={index}
+                        currentUserId={currentUserId}
+                        updatingId={updatingId}
+                        onRoleChange={updateRole}
+                        onToggleBlock={toggleBlock}
+                        onResetPassword={openResetModal}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="space-y-3 lg:hidden">
                 {users.map((user, index) => (
-                  <UserRow
+                  <UserCard
                     key={user.id}
                     user={user}
                     index={index}
@@ -161,29 +270,103 @@ export function AdminUserList({ currentUserId, onMessage }: AdminUserListProps) 
                     updatingId={updatingId}
                     onRoleChange={updateRole}
                     onToggleBlock={toggleBlock}
+                    onResetPassword={openResetModal}
                   />
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </div>
+          )}
 
-          <div className="space-y-3 lg:hidden">
-            {users.map((user, index) => (
-              <UserCard
-                key={user.id}
-                user={user}
-                index={index}
-                currentUserId={currentUserId}
-                updatingId={updatingId}
-                onRoleChange={updateRole}
-                onToggleBlock={toggleBlock}
-              />
-            ))}
-          </div>
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} showDots={false} />
         </>
       )}
 
-      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} showDots={false} />
+      {resetUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="w-full max-w-md">
+            <h3 className="mb-1 text-lg font-semibold text-foreground">تغییر رمز عبور</h3>
+            <p className="mb-4 text-sm text-muted">
+              رمز جدید برای «{resetUser.name}» ({resetUser.email})
+            </p>
+            <form onSubmit={submitResetPassword} className="space-y-3">
+              <div>
+                <label className="mb-1 block text-sm text-muted">رمز جدید</label>
+                <PasswordInput
+                  value={resetPassword}
+                  onChange={(event) => setResetPassword(event.target.value)}
+                  minLength={6}
+                  required
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-muted">تکرار رمز جدید</label>
+                <PasswordInput
+                  value={resetConfirm}
+                  onChange={(event) => setResetConfirm(event.target.value)}
+                  minLength={6}
+                  required
+                />
+              </div>
+              {resetError && <p className="text-sm text-rose-600">{resetError}</p>}
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button type="submit" disabled={updatingId === resetUser.id} className="flex-1">
+                  {updatingId === resetUser.id ? "در حال ذخیره..." : "ذخیره رمز جدید"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={() => setResetUser(null)}
+                >
+                  انصراف
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UserSearchBar({
+  search,
+  onSearchChange,
+  onClear,
+  refreshing,
+}: {
+  search: string;
+  onSearchChange: (value: string) => void;
+  onClear: () => void;
+  refreshing: boolean;
+}) {
+  return (
+    <div className="sticky top-[4.25rem] z-20 -mx-1 rounded-xl bg-surface/95 p-1 backdrop-blur-sm sm:static sm:top-auto sm:z-auto sm:mx-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+      <div className="relative">
+        <Search size={18} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
+        <Input
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="جستجو با نام یا ایمیل..."
+          className="min-h-[2.75rem] pr-10 pl-10 text-base sm:min-h-0 sm:text-sm"
+          aria-label="جستجوی کاربران"
+          autoComplete="off"
+          enterKeyHint="search"
+        />
+        {search ? (
+          <button
+            type="button"
+            onClick={onClear}
+            className="absolute left-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-muted transition hover:bg-surface-muted hover:text-foreground"
+            aria-label="پاک کردن جستجو"
+          >
+            <X size={16} />
+          </button>
+        ) : refreshing ? (
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-teal-brand">...</span>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -192,10 +375,12 @@ function SummaryCard({
   total,
   page,
   totalPages,
+  search,
 }: {
   total: number;
   page: number;
   totalPages: number;
+  search?: string;
 }) {
   const [visible, setVisible] = useState(false);
 
@@ -207,10 +392,15 @@ function SummaryCard({
             <Users size={20} />
           </span>
           <div>
-            <p className="text-xs text-muted sm:text-sm">تعداد کل کاربران</p>
+            <p className="text-xs text-muted sm:text-sm">
+              {search ? "نتیجه جستجو" : "تعداد کل کاربران"}
+            </p>
             <p className="text-xl font-bold text-teal-brand sm:text-2xl">
               <AnimatedNumber value={total} duration={1000} active={visible} />
             </p>
+            {search && (
+              <p className="mt-0.5 text-[11px] text-muted sm:text-xs">برای «{search}»</p>
+            )}
           </div>
         </div>
         <p className="rounded-lg bg-surface-muted px-3 py-2 text-center text-xs text-muted sm:text-left">
@@ -229,9 +419,18 @@ type UserItemProps = {
   updatingId: string | null;
   onRoleChange: (user: AdminUser, role: "USER" | "ADMIN") => void;
   onToggleBlock: (user: AdminUser) => void;
+  onResetPassword: (user: AdminUser) => void;
 };
 
-function UserRow({ user, index, currentUserId, updatingId, onRoleChange, onToggleBlock }: UserItemProps) {
+function UserRow({
+  user,
+  index,
+  currentUserId,
+  updatingId,
+  onRoleChange,
+  onToggleBlock,
+  onResetPassword,
+}: UserItemProps) {
   const { setRef, visible, animationClass } = useAnimateOnView();
   const isSelf = user.id === currentUserId;
   const isAdmin = user.role === "ADMIN";
@@ -290,6 +489,15 @@ function UserRow({ user, index, currentUserId, updatingId, onRoleChange, onToggl
           </Button>
           <Button
             size="sm"
+            variant="secondary"
+            disabled={updatingId === user.id}
+            onClick={() => onResetPassword(user)}
+          >
+            <KeyRound size={14} className="ml-1" />
+            تغییر رمز
+          </Button>
+          <Button
+            size="sm"
             variant={user.blocked ? "secondary" : "danger"}
             disabled={isSelf || updatingId === user.id || isAdmin}
             onClick={() => onToggleBlock(user)}
@@ -304,7 +512,15 @@ function UserRow({ user, index, currentUserId, updatingId, onRoleChange, onToggl
   );
 }
 
-function UserCard({ user, index, currentUserId, updatingId, onRoleChange, onToggleBlock }: UserItemProps) {
+function UserCard({
+  user,
+  index,
+  currentUserId,
+  updatingId,
+  onRoleChange,
+  onToggleBlock,
+  onResetPassword,
+}: UserItemProps) {
   const isSelf = user.id === currentUserId;
   const isAdmin = user.role === "ADMIN";
 
@@ -362,6 +578,16 @@ function UserCard({ user, index, currentUserId, updatingId, onRoleChange, onTogg
             کاربر
           </Button>
         </div>
+        <Button
+          size="sm"
+          className="touch-target w-full"
+          variant="secondary"
+          disabled={updatingId === user.id}
+          onClick={() => onResetPassword(user)}
+        >
+          <KeyRound size={14} className="ml-1" />
+          تغییر رمز
+        </Button>
         <Button
           size="sm"
           className="touch-target w-full"

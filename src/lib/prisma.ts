@@ -23,7 +23,18 @@ function createPrismaClient() {
   return new PrismaClient({ adapter });
 }
 
+const REQUIRED_DELEGATES = ["user", "passwordResetToken", "ticket", "content"] as const;
+
+function isStalePrismaClient(client: PrismaClient) {
+  return REQUIRED_DELEGATES.some((key) => !(key in client));
+}
+
 function getPrismaClient() {
+  if (globalForPrisma.prisma && isStalePrismaClient(globalForPrisma.prisma)) {
+    void globalForPrisma.prisma.$disconnect().catch(() => {});
+    globalForPrisma.prisma = undefined;
+  }
+
   if (!globalForPrisma.prisma) {
     globalForPrisma.prisma = createPrismaClient();
   }

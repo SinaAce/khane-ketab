@@ -118,4 +118,16 @@ export const ARCHIVE_CATALOG: ArchiveCatalogItem[] = [
   { identifier: "PersianPodcast001", title: "پادکست فرهنگ ایران", creator: "گردآوری", type: "AUDIOBOOK", categorySlug: "podcast" },
   { identifier: "PersianPodcast002", title: "پادکست تاریخ", creator: "گردآوری", type: "AUDIOBOOK", categorySlug: "podcast" },
   { identifier: "PersianPodcast003", title: "پادکست ادبیات", creator: "گردآوری", type: "AUDIOBOOK", categorySlug: "podcast" },
+  // شناسه‌های تأییدشده اضافی از Archive.org
+  { identifier: "hafez-odrvxoxmkt", title: "دیوان حافظ — چاپ دیجیتال", creator: "حافظ شیرازی", type: "EBOOK", categorySlug: "literature" },
+  { identifier: "KulliyatESaadiFarsi", title: "کلیات سعدی — نسخه کامل", creator: "سعدی شیرازی", type: "EBOOK", categorySlug: "literature" },
+  { identifier: "GolestanSaadiPersianTextPdf", title: "گلستان — متن فارسی", creator: "سعدی شیرازی", type: "EBOOK", categorySlug: "literature" },
+  { identifier: "ghazaliyat-e-saadi", title: "غزلیات سعدی", creator: "سعدی شیرازی", type: "EBOOK", categorySlug: "literature" },
+  { identifier: "shahnameh-the-persian-book-of-kings", title: "شاهنامه فردوسی", creator: "فردوسی", type: "EBOOK", categorySlug: "literature" },
+  { identifier: "MuseebatNama-AttarNishaburiFarsi", title: "مصیبت‌نامه عطار", creator: "عطار نیشابوری", type: "EBOOK", categorySlug: "philosophy" },
+  { identifier: "BaKarvanEHulla-AbdulHussainZarrinkoubFarsi", title: "با قافله حل — زرین‌کوب", creator: "عبدالحسین زرین‌کوب", type: "EBOOK", categorySlug: "history" },
+  { identifier: "DivanEAliQuliMirzaEtizadUs-SaltanaFakhriQajarFarsi", title: "دیوان فخری قاجار", creator: "علی‌قلی میرزا", type: "EBOOK", categorySlug: "literature" },
+  { identifier: "MuntakhabEAshaarEMeerzaArshadHaraviFarsi", title: "منتخب اشعار ارشد هراتی", creator: "میرزا ارشد هراتی", type: "EBOOK", categorySlug: "literature" },
+  { identifier: "20210117_20210117_2117", title: "گاتاها — کتاب صوتی", creator: "گردآوری", type: "AUDIOBOOK", categorySlug: "podcast" },
+  { identifier: "Track121", title: "تصادف شبانه — پادکست", creator: "پاتریک مودیانو", type: "AUDIOBOOK", categorySlug: "podcast" },
 ];

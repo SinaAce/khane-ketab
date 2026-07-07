@@ -43,16 +43,21 @@ async function getHeroStats() {
   });
 }
 
-async function getTopicSliderData() {
+async function getTopicSlides() {
   return withPrismaRetry(async () => {
     const approved = { status: "APPROVED" as const };
 
     const [categories, ebooks, audiobooks] = await Promise.all([
       prisma.category.findMany({
         orderBy: { name: "asc" },
-        include: {
+        select: {
+          name: true,
+          slug: true,
+          description: true,
           _count: {
-            select: { contents: { where: approved } },
+            select: {
+              contents: { where: approved },
+            },
           },
         },
       }),
@@ -77,16 +82,16 @@ export default async function HomePage() {
 
   let recommended: Awaited<ReturnType<typeof getRecommendations>> = [];
   let latest: Awaited<ReturnType<typeof getApprovedContents>>["items"] = [];
+  let topicSlides: Awaited<ReturnType<typeof getTopicSlides>> = [];
   let stats = { ebooks: 0, audiobooks: 0, iranHistory: 0, worldHistory: 0 };
-  let topicSlides: Awaited<ReturnType<typeof getTopicSliderData>> = [];
   let dbError = false;
 
   try {
     const [recommendedData, latestData, statsData, topicSlidesData] = await Promise.all([
-      getRecommendations(session?.user?.id, 80),
-      getApprovedContents({ sort: "newest", pageSize: 80 }),
+      getRecommendations(session?.user?.id, 20),
+      getApprovedContents({ sort: "newest", pageSize: 20 }),
       getHeroStats(),
-      getTopicSliderData(),
+      getTopicSlides(),
     ]);
     recommended = recommendedData;
     latest = latestData.items;

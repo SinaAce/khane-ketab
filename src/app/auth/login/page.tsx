@@ -7,12 +7,14 @@ import { Suspense, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { PersianLoader } from "@/components/ui/PersianLoader";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const resetSuccess = searchParams.get("reset") === "1";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -46,6 +48,12 @@ function LoginForm() {
         <h1 className="mb-2 text-2xl font-bold text-foreground">ورود</h1>
         <p className="mb-6 text-sm text-muted">به حساب کاربری خود وارد شوید.</p>
 
+        {resetSuccess && (
+          <p className="mb-4 rounded-xl bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+            رمز عبور با موفقیت تغییر کرد. اکنون وارد شوید.
+          </p>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-2 block text-sm font-medium text-foreground">ایمیل</label>
@@ -58,9 +66,16 @@ function LoginForm() {
             />
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-foreground">رمز عبور</label>
-            <Input
-              type="password"
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <label className="block text-sm font-medium text-foreground">رمز عبور</label>
+              <Link
+                href="/auth/forgot-password"
+                className="text-xs font-medium text-teal-brand hover:underline"
+              >
+                فراموشی رمز؟
+              </Link>
+            </div>
+            <PasswordInput
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { auth } from "@/lib/auth";
+import { clearPasswordResetTokens } from "@/lib/password-reset";
 import { prisma } from "@/lib/prisma";
 import { profileUpdateSchema } from "@/lib/validators";
 
@@ -98,6 +99,7 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: "رمز عبور فعلی اشتباه است." }, { status: 400 });
       }
       data.passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
+      await clearPasswordResetTokens(session.user.id);
     }
 
     if (Object.keys(data).length === 0) {

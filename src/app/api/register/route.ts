@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
+import { normalizeEmail } from "@/lib/email-utils";
 import { prisma } from "@/lib/prisma";
 import { registerSchema } from "@/lib/validators";
 
@@ -15,8 +16,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const existing = await prisma.user.findUnique({
-      where: { email: parsed.data.email },
+    const email = normalizeEmail(parsed.data.email);
+
+    const existing = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
     });
 
     if (existing) {
@@ -28,7 +31,7 @@ export async function POST(request: Request) {
     const user = await prisma.user.create({
       data: {
         name: parsed.data.name,
-        email: parsed.data.email,
+        email,
         passwordHash,
       },
       select: { id: true, name: true, email: true },

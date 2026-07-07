@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { BarChart3, ClipboardList, Crown, Users } from "lucide-react";
+import { BarChart3, ClipboardList, Crown, Database, LifeBuoy, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AnimateOnView } from "@/components/admin/AnimateOnView";
 import { AdminStats } from "@/components/admin/AdminStats";
 import { AdminTabPanel } from "@/components/admin/AdminTabPanel";
+import { AdminTickets } from "@/components/admin/AdminTickets";
 import { AdminTopUsers } from "@/components/admin/AdminTopUsers";
 import { AdminUserList } from "@/components/admin/AdminUserList";
 import { Badge } from "@/components/ui/Badge";
@@ -17,7 +18,7 @@ import { PersianLoader } from "@/components/ui/PersianLoader";
 import { StarRating } from "@/components/content/StarRating";
 import { cn } from "@/lib/utils";
 
-type Tab = "pending" | "stats" | "users" | "top";
+type Tab = "pending" | "stats" | "users" | "top" | "tickets";
 
 type PendingContent = {
   id: string;
@@ -41,6 +42,7 @@ const tabs: { id: Tab; label: string; icon: typeof ClipboardList }[] = [
   { id: "pending", label: "تأییدها", icon: ClipboardList },
   { id: "stats", label: "آمار سایت", icon: BarChart3 },
   { id: "users", label: "کاربران", icon: Users },
+  { id: "tickets", label: "تیکت‌ها", icon: LifeBuoy },
   { id: "top", label: "کاربران برتر", icon: Crown },
 ];
 
@@ -52,6 +54,7 @@ export default function AdminPage() {
   const [reviews, setReviews] = useState<PendingReview[]>([]);
   const [message, setMessage] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -108,6 +111,27 @@ export default function AdminPage() {
     }
   }
 
+  async function importArchiveCatalog() {
+    setImporting(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/admin/import-archive", { method: "POST" });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMessage(data.error || "واردات محتوا ناموفق بود.");
+        return;
+      }
+
+      setMessage(data.message);
+    } catch {
+      setMessage("خطا در ارتباط با سرور.");
+    } finally {
+      setImporting(false);
+    }
+  }
+
   if (status === "loading") {
     return <PersianLoader label="در حال بارگذاری پنل مدیر..." />;
   }
@@ -117,9 +141,20 @@ export default function AdminPage() {
   return (
     <div className="page-shell mx-auto max-w-6xl py-6 sm:py-10">
       <AnimateOnView animation="header" className="mb-6 sm:mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-teal-brand sm:text-3xl">پنل مدیر</h1>
-          <p className="mt-2 text-sm text-muted">مدیریت تأییدها، آمار، کاربران و دسترسی‌ها</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-teal-brand sm:text-3xl">پنل مدیر</h1>
+            <p className="mt-2 text-sm text-muted">مدیریت تأییدها، آمار، کاربران و دسترسی‌ها</p>
+          </div>
+          <Button
+            variant="secondary"
+            className="touch-target shrink-0"
+            onClick={() => void importArchiveCatalog()}
+            disabled={importing}
+          >
+            <Database size={16} />
+            {importing ? "در حال واردات..." : "واردات کتاب‌ها از آرشیو"}
+          </Button>
         </div>
       </AnimateOnView>
 
@@ -314,6 +349,22 @@ export default function AdminPage() {
               </p>
             </AnimateOnView>
             <AdminTopUsers />
+          </section>
+        </AdminTabPanel>
+      )}
+
+      {tab === "tickets" && (
+        <AdminTabPanel panelKey="tickets">
+          <section>
+            <AnimateOnView animation="rise">
+              <h2 className="mb-2 text-lg font-semibold text-foreground sm:mb-3 sm:text-xl">تیکت‌های پشتیبانی</h2>
+            </AnimateOnView>
+            <AnimateOnView animation="rise" delay={0.08}>
+              <p className="mb-4 text-xs text-muted sm:text-sm">
+                مشاهده، پاسخ و بستن تیکت‌های کاربران.
+              </p>
+            </AnimateOnView>
+            <AdminTickets onMessage={setMessage} />
           </section>
         </AdminTabPanel>
       )}

@@ -1,8 +1,10 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { LogOut } from "lucide-react";
 import { Input } from "@/components/ui/Input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
@@ -68,14 +70,12 @@ export function ProfileForm({ initialName, email, onUpdated }: ProfileFormProps)
         <div className="border-t border-border-persian pt-4">
           <p className="mb-3 text-sm font-medium text-foreground">تغییر رمز عبور</p>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input
-              type="password"
+            <PasswordInput
               placeholder="رمز فعلی"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
             />
-            <Input
-              type="password"
+            <PasswordInput
               placeholder="رمز جدید"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
@@ -88,6 +88,18 @@ export function ProfileForm({ initialName, email, onUpdated }: ProfileFormProps)
           {loading ? "در حال ذخیره..." : "ذخیره تغییرات"}
         </Button>
       </form>
+
+      <div className="mt-6 border-t border-border-persian pt-4">
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-full justify-start text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/40"
+          onClick={() => signOut({ callbackUrl: "/" })}
+        >
+          <LogOut size={16} className="ml-2" />
+          خروج از حساب
+        </Button>
+      </div>
     </Card>
   );
 }
