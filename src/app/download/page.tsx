@@ -1,7 +1,5 @@
 import {
   ANDROID_APK_URL,
-  IOS_INSTALL_URL,
-  PWA_INSTALL_URL,
   SITE_NAME,
   SITE_SLOGAN,
   SITE_URL,
@@ -20,8 +18,6 @@ export default function DownloadPage() {
       siteSlogan={SITE_SLOGAN}
       siteUrl={SITE_URL}
       androidApkUrl={ANDROID_APK_URL}
-      iosInstallUrl={IOS_INSTALL_URL}
-      pwaInstallUrl={PWA_INSTALL_URL}
     />
   );
 }

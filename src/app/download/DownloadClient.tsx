@@ -17,43 +17,59 @@ type DownloadClientProps = {
   siteSlogan: string;
   siteUrl: string;
   androidApkUrl: string;
-  iosInstallUrl: string;
-  pwaInstallUrl: string;
 };
 
-export function DownloadClient({
-  siteName,
-  siteSlogan,
-  siteUrl,
-  androidApkUrl,
-}: DownloadClientProps) {
+export function DownloadClient({ siteName, siteSlogan, siteUrl, androidApkUrl }: DownloadClientProps) {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
   const [isIos, setIsIos] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
+  const [apkAvailable, setApkAvailable] = useState(false);
+  const [installing, setInstalling] = useState(false);
 
   useEffect(() => {
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
-      ("standalone" in window.navigator && (window.navigator as Navigator & { standalone?: boolean }).standalone);
+      ("standalone" in window.navigator &&
+        (window.navigator as Navigator & { standalone?: boolean }).standalone);
     setInstalled(Boolean(standalone));
     setIsIos(/iphone|ipad|ipod/i.test(window.navigator.userAgent));
+    setIsAndroid(/android/i.test(window.navigator.userAgent));
+
+    fetch(androidApkUrl, { method: "HEAD" })
+      .then((response) => setApkAvailable(response.ok))
+      .catch(() => setApkAvailable(false));
 
     function onBeforeInstall(event: Event) {
       event.preventDefault();
       setInstallEvent(event as BeforeInstallPromptEvent);
     }
 
+    function onInstalled() {
+      setInstalled(true);
+      setInstallEvent(null);
+    }
+
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
-    return () => window.removeEventListener("beforeinstallprompt", onBeforeInstall);
-  }, []);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstall);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, [androidApkUrl]);
 
   async function installPwa() {
     if (!installEvent) return;
-    await installEvent.prompt();
-    const choice = await installEvent.userChoice;
-    if (choice.outcome === "accepted") {
-      setInstalled(true);
-      setInstallEvent(null);
+    setInstalling(true);
+    try {
+      await installEvent.prompt();
+      const choice = await installEvent.userChoice;
+      if (choice.outcome === "accepted") {
+        setInstalled(true);
+        setInstallEvent(null);
+      }
+    } finally {
+      setInstalling(false);
     }
   }
 
@@ -72,16 +88,37 @@ export function DownloadClient({
           </div>
           <h2 className="text-lg font-bold text-foreground">اندروید</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted">
-            فایل APK را دانلود و نصب کنید. اگر پیام «منبع ناشناس» آمد، اجازه نصب از مرورگر را بدهید.
+            در Chrome اندروید دکمه «نصب اپ» را بزنید. اگر APK آماده باشد، می‌توانید فایل را مستقیم دانلود کنید.
           </p>
+
           <div className="mt-4 flex flex-col gap-2">
-            <a href={androidApkUrl} download>
-              <Button className="w-full">
+            {installed ? (
+              <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                اپ روی دستگاه شما نصب است.
+              </p>
+            ) : installEvent ? (
+              <Button className="w-full" onClick={() => void installPwa()} disabled={installing}>
                 <Download size={18} className="ml-1" />
-                دانلود APK اندروید
+                {installing ? "در حال نصب..." : "نصب اپ اندروید"}
               </Button>
-            </a>
-            <p className="text-xs text-muted">نسخه وب: {siteUrl}</p>
+            ) : isAndroid ? (
+              <div className="rounded-xl bg-teal-brand/10 px-3 py-3 text-sm text-teal-brand">
+                منوی Chrome (⋮) → «Install app» / «نصب برنامه» → Install
+              </div>
+            ) : (
+              <p className="text-sm text-muted">برای نصب، این صفحه را در Chrome اندروید باز کنید.</p>
+            )}
+
+            {apkAvailable ? (
+              <a href={androidApkUrl} download="khane-ketab.apk">
+                <Button variant="secondary" className="w-full">
+                  <Download size={18} className="ml-1" />
+                  دانلود APK
+                </Button>
+              </a>
+            ) : (
+              <p className="text-xs text-muted">فایل APK هنوز روی سرور قرار نگرفته — فعلاً از «نصب اپ» استفاده کنید.</p>
+            )}
           </div>
         </Card>
 
@@ -113,21 +150,13 @@ export function DownloadClient({
           </div>
           <div className="flex-1">
             <h2 className="text-lg font-bold text-foreground">نصب سریع (PWA)</h2>
-            <p className="mt-1 text-sm text-muted">
-              بدون استور، مثل اپ روی گوشی نصب می‌شود — با نوار پایین و طراحی ایرانی.
-            </p>
+            <p className="mt-1 text-sm text-muted">بدون استور، مثل اپ روی گوشی نصب می‌شود — با نوار پایین و طراحی ایرانی.</p>
             <div className="mt-4 flex flex-wrap gap-2">
-              {installed ? (
-                <p className="text-sm text-emerald-700 dark:text-emerald-300">اپ روی دستگاه شما نصب است.</p>
-              ) : installEvent ? (
-                <Button onClick={() => void installPwa()}>
+              {!installed && installEvent && (
+                <Button onClick={() => void installPwa()} disabled={installing}>
                   <Download size={18} className="ml-1" />
-                  نصب اپ
+                  {installing ? "در حال نصب..." : "نصب اپ"}
                 </Button>
-              ) : (
-                <p className="text-sm text-muted">
-                  در Chrome/Edge اندروید یا دسکتاپ دکمه «نصب» مرورگر را بزنید، یا از APK استفاده کنید.
-                </p>
               )}
               <Link href="/">
                 <Button variant="secondary">
@@ -139,10 +168,6 @@ export function DownloadClient({
           </div>
         </div>
       </Card>
-
-      <p className="mt-6 text-center text-xs text-muted">
-        برای انتشار در Google Play و App Store نیاز به حساب توسعه‌دهنده و بررسی استور است.
-      </p>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Vazirmatn } from "next/font/google";
 import NextTopLoader from "nextjs-toploader";
+import { PwaRegister } from "@/components/layout/PwaRegister";
 import { BackToTop } from "@/components/layout/BackToTop";
 import { Footer } from "@/components/layout/Footer";
 import { MobileBottomNavShell } from "@/components/layout/MobileBottomNavShell";
@@ -12,8 +13,10 @@ import "./globals.css";
 import { SITE_NAME, SITE_SLOGAN, SITE_URL } from "@/lib/site";
 
 const vazirmatn = Vazirmatn({
-  subsets: ["arabic", "latin"],
+  subsets: ["arabic"],
   variable: "--font-vazirmatn",
+  display: "swap",
+  preload: true,
 });
 
 export const metadata: Metadata = {
@@ -71,6 +74,7 @@ export default function RootLayout({
             shadow="0 0 10px #c9a227,0 0 5px #0d7377"
           />
           <AuthProvider>
+            <PwaRegister />
             <Navbar />
             <main className="flex-1">
               <PageEntrance>{children}</PageEntrance>

@@ -1,19 +1,5 @@
-"use client";
-
-import { useEffect, useState, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
 
 export function PageEntrance({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    setVisible(false);
-    const frame = requestAnimationFrame(() => setVisible(true));
-    return () => cancelAnimationFrame(frame);
-  }, [pathname]);
-
-  return (
-    <div className={visible ? "page-enter page-enter-active" : "page-enter"}>{children}</div>
-  );
+  return <div className="page-enter page-enter-active">{children}</div>;
 }

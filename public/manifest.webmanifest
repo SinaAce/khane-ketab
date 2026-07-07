@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "name": "خانه کتاب",
   "short_name": "خانه کتاب",
   "description": "خانه کتاب، کتابخانه‌ای برای کتاب‌خوان‌ها",
@@ -7,6 +8,7 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "browser"],
   "orientation": "portrait-primary",
   "background_color": "#faf6f0",
   "theme_color": "#0d7377",
@@ -19,10 +21,16 @@
       "purpose": "any"
     },
     {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
       "src": "/apple-icon.png",
       "sizes": "180x180",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
   "shortcuts": [
