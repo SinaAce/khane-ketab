@@ -60,17 +60,7 @@ export function Navbar() {
             <ThemeToggle />
           </div>
 
-          {session ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="touch-target px-2.5 md:hidden"
-              onClick={() => signOut({ callbackUrl: "/" })}
-            >
-              <LogOut size={16} className="ml-1" />
-              خروج
-            </Button>
-          ) : (
+          {!session && (
             <Link href="/auth/login" className="md:hidden">
               <Button size="sm" className="touch-target px-3">
                 ورود

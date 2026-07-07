@@ -11,8 +11,8 @@ type NavItem = {
   label: string;
   icon: typeof Home;
   isActive: (pathname: string, tab: string | null) => boolean;
-  center?: boolean;
   iconOnly?: boolean;
+  center?: boolean;
 };
 
 function hideBottomNav(pathname: string) {
@@ -28,30 +28,28 @@ function NavLink({ item, pathname, tab }: { item: NavItem; pathname: string; tab
   const active = item.isActive(pathname, tab);
 
   return (
-    <li className={cn("mobile-bottom-nav__item", item.center && "mobile-bottom-nav__item--center")}>
-      <Link
-        href={item.href}
+    <Link
+      href={item.href}
+      className={cn(
+        "mobile-bottom-nav__link",
+        item.center && "mobile-bottom-nav__link--center",
+        active && "mobile-bottom-nav__link--active",
+      )}
+      aria-current={active ? "page" : undefined}
+      aria-label={item.iconOnly ? item.label : undefined}
+      title={item.iconOnly ? item.label : undefined}
+    >
+      <span
         className={cn(
-          "mobile-bottom-nav__link",
-          item.center && "mobile-bottom-nav__link--center",
-          active && "mobile-bottom-nav__link--active",
+          "mobile-bottom-nav__icon-wrap",
+          item.center && "mobile-bottom-nav__icon-wrap--center",
+          active && "mobile-bottom-nav__icon-wrap--active",
         )}
-        aria-current={active ? "page" : undefined}
-        aria-label={item.iconOnly ? item.label : undefined}
-        title={item.iconOnly ? item.label : undefined}
       >
-        <span
-          className={cn(
-            "mobile-bottom-nav__icon-wrap",
-            item.center && "mobile-bottom-nav__icon-wrap--center",
-            active && "persian-pattern",
-          )}
-        >
-          <Icon size={item.center ? 28 : 20} strokeWidth={active ? 2.4 : 2} />
-        </span>
-        {!item.iconOnly && <span className="mobile-bottom-nav__label">{item.label}</span>}
-      </Link>
-    </li>
+        <Icon size={item.center ? 28 : 20} strokeWidth={active ? 2.4 : 2} />
+      </span>
+      {!item.iconOnly && <span className="mobile-bottom-nav__label">{item.label}</span>}
+    </Link>
   );
 }
 
@@ -64,57 +62,67 @@ export function MobileBottomNav() {
 
   if (hideBottomNav(pathname)) return null;
 
-  const items: NavItem[] = [
-    {
-      href: session ? "/dashboard" : "/auth/login",
-      label: session ? "حساب" : "ورود",
-      icon: UserRound,
-      isActive: (path, currentTab) =>
-        session
-          ? path.startsWith("/dashboard") && currentTab !== "tickets"
-          : path.startsWith("/auth/login"),
-    },
-    {
-      href: isAdmin
-        ? "/admin"
-        : session
-          ? "/dashboard?tab=tickets"
-          : "/auth/login?callbackUrl=/dashboard?tab=tickets",
-      label: isAdmin ? "مدیریت" : "پشتیبانی",
-      icon: isAdmin ? Shield : LifeBuoy,
-      isActive: (path, currentTab) =>
-        isAdmin ? path.startsWith("/admin") : path.startsWith("/dashboard") && currentTab === "tickets",
-    },
-    {
-      href: "/",
-      label: "خانه",
-      icon: Home,
-      center: true,
-      iconOnly: true,
-      isActive: (path) => path === "/",
-    },
-    {
-      href: "/browse",
-      label: "کتاب",
-      icon: BookOpen,
-      isActive: (path) => path.startsWith("/browse") || path.startsWith("/content"),
-    },
-    {
-      href: session ? "/upload" : "/auth/login?callbackUrl=/upload",
-      label: "آپلود",
-      icon: Upload,
-      isActive: (path) => path === "/upload",
-    },
-  ];
+  const accountItem: NavItem = {
+    href: session ? "/dashboard?tab=profile" : "/auth/login",
+    label: session ? "حساب" : "ورود",
+    icon: UserRound,
+    isActive: (path, currentTab) =>
+      session ? path.startsWith("/dashboard") && currentTab === "profile" : path.startsWith("/auth/login"),
+  };
+
+  const secondItem: NavItem = {
+    href: isAdmin
+      ? "/admin"
+      : session
+        ? "/dashboard?tab=tickets"
+        : "/auth/login?callbackUrl=/dashboard?tab=tickets",
+    label: isAdmin ? "مدیریت" : "پشتیبانی",
+    icon: isAdmin ? Shield : LifeBuoy,
+    isActive: (path, currentTab) =>
+      isAdmin ? path.startsWith("/admin") : path.startsWith("/dashboard") && currentTab === "tickets",
+  };
+
+  const homeItem: NavItem = {
+    href: "/",
+    label: "خانه",
+    icon: Home,
+    iconOnly: true,
+    center: true,
+    isActive: (path) => path === "/",
+  };
+
+  const bookItem: NavItem = {
+    href: "/browse",
+    label: "کتاب",
+    icon: BookOpen,
+    isActive: (path) => path.startsWith("/browse") || path.startsWith("/content"),
+  };
+
+  const uploadItem: NavItem = {
+    href: session ? "/upload" : "/auth/login?callbackUrl=/upload",
+    label: "آپلود",
+    icon: Upload,
+    isActive: (path) => path === "/upload",
+  };
 
   return (
-    <nav className="mobile-bottom-nav safe-bottom md:hidden" aria-label="ناوبری اصلی">
+    <nav className="mobile-bottom-nav md:hidden" aria-label="ناوبری اصلی">
       <div className="mobile-bottom-nav__pattern" aria-hidden />
-      <ul className="mobile-bottom-nav__list">
-        {items.map((item) => (
-          <NavLink key={item.label} item={item} pathname={pathname} tab={tab} />
-        ))}
-      </ul>
+      <div className="mobile-bottom-nav__inner">
+        <div className="mobile-bottom-nav__side">
+          <NavLink item={accountItem} pathname={pathname} tab={tab} />
+          <NavLink item={secondItem} pathname={pathname} tab={tab} />
+        </div>
+
+        <div className="mobile-bottom-nav__center">
+          <NavLink item={homeItem} pathname={pathname} tab={tab} />
+        </div>
+
+        <div className="mobile-bottom-nav__side">
+          <NavLink item={bookItem} pathname={pathname} tab={tab} />
+          <NavLink item={uploadItem} pathname={pathname} tab={tab} />
+        </div>
+      </div>
     </nav>
   );
 }
