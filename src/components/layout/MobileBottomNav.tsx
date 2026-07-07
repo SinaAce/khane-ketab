@@ -107,23 +107,34 @@ export function MobileBottomNav() {
 
   return (
     <nav className="mobile-bottom-nav md:hidden" aria-label="ناوبری اصلی">
-      <div className="mobile-bottom-nav__float">
-        <div className="mobile-bottom-nav__arch" aria-hidden />
-        <div className="mobile-bottom-nav__pattern" aria-hidden />
-        <div className="mobile-bottom-nav__inner">
-          <div className="mobile-bottom-nav__side">
-            <NavLink item={accountItem} pathname={pathname} tab={tab} />
-            <NavLink item={secondItem} pathname={pathname} tab={tab} />
-          </div>
+      <div className="mobile-bottom-nav__shape-wrap" aria-hidden>
+        <svg className="mobile-bottom-nav__shape" viewBox="0 0 390 88" preserveAspectRatio="none">
+          <path
+            className="mobile-bottom-nav__shape-fill"
+            d="M0 88 V26 Q0 14 12 14 H158 Q195 -4 232 14 H378 Q390 14 390 26 V88 H0 Z"
+          />
+          <path
+            className="mobile-bottom-nav__shape-line"
+            d="M12 14 H158 Q195 -4 232 14 H378"
+            fill="none"
+          />
+        </svg>
+        <div className="mobile-bottom-nav__pattern" />
+      </div>
 
-          <div className="mobile-bottom-nav__center">
-            <NavLink item={homeItem} pathname={pathname} tab={tab} />
-          </div>
+      <div className="mobile-bottom-nav__content">
+        <div className="mobile-bottom-nav__side">
+          <NavLink item={accountItem} pathname={pathname} tab={tab} />
+          <NavLink item={secondItem} pathname={pathname} tab={tab} />
+        </div>
 
-          <div className="mobile-bottom-nav__side">
-            <NavLink item={bookItem} pathname={pathname} tab={tab} />
-            <NavLink item={uploadItem} pathname={pathname} tab={tab} />
-          </div>
+        <div className="mobile-bottom-nav__home">
+          <NavLink item={homeItem} pathname={pathname} tab={tab} />
+        </div>
+
+        <div className="mobile-bottom-nav__side">
+          <NavLink item={bookItem} pathname={pathname} tab={tab} />
+          <NavLink item={uploadItem} pathname={pathname} tab={tab} />
         </div>
       </div>
     </nav>
