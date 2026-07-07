@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Vazirmatn } from "next/font/google";
 import NextTopLoader from "nextjs-toploader";
-import { AppShellScript } from "@/components/layout/AppShellScript";
 import { BackToTop } from "@/components/layout/BackToTop";
 import { Footer } from "@/components/layout/Footer";
 import { MobileBottomNavShell } from "@/components/layout/MobileBottomNavShell";
@@ -56,13 +55,12 @@ export default function RootLayout({
   return (
     <html lang="fa" dir="rtl" className={`${vazirmatn.variable} h-full`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
-        <AppShellScript />
         <link rel="icon" href="/favicon.png" type="image/png" sizes="48x48" />
         <link rel="shortcut icon" href="/favicon.png" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-icon.png" sizes="180x180" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className="min-h-full flex flex-col bg-background font-sans text-foreground antialiased">
+      <body className="mobile-bottom-nav-shell min-h-full flex flex-col bg-background font-sans text-foreground antialiased">
         <ThemeProvider>
           <NextTopLoader
             color="#c9a227"
