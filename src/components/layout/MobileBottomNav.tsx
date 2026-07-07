@@ -46,7 +46,7 @@ function NavLink({ item, pathname, tab }: { item: NavItem; pathname: string; tab
           active && "mobile-bottom-nav__icon-wrap--active",
         )}
       >
-        <Icon size={item.center ? 28 : 20} strokeWidth={active ? 2.4 : 2} />
+        <Icon size={item.center ? 22 : 17} strokeWidth={active ? 2.3 : 1.9} />
       </span>
       {!item.iconOnly && <span className="mobile-bottom-nav__label">{item.label}</span>}
     </Link>
@@ -107,20 +107,23 @@ export function MobileBottomNav() {
 
   return (
     <nav className="mobile-bottom-nav md:hidden" aria-label="ناوبری اصلی">
-      <div className="mobile-bottom-nav__pattern" aria-hidden />
-      <div className="mobile-bottom-nav__inner">
-        <div className="mobile-bottom-nav__side">
-          <NavLink item={accountItem} pathname={pathname} tab={tab} />
-          <NavLink item={secondItem} pathname={pathname} tab={tab} />
-        </div>
+      <div className="mobile-bottom-nav__float">
+        <div className="mobile-bottom-nav__arch" aria-hidden />
+        <div className="mobile-bottom-nav__pattern" aria-hidden />
+        <div className="mobile-bottom-nav__inner">
+          <div className="mobile-bottom-nav__side">
+            <NavLink item={accountItem} pathname={pathname} tab={tab} />
+            <NavLink item={secondItem} pathname={pathname} tab={tab} />
+          </div>
 
-        <div className="mobile-bottom-nav__center">
-          <NavLink item={homeItem} pathname={pathname} tab={tab} />
-        </div>
+          <div className="mobile-bottom-nav__center">
+            <NavLink item={homeItem} pathname={pathname} tab={tab} />
+          </div>
 
-        <div className="mobile-bottom-nav__side">
-          <NavLink item={bookItem} pathname={pathname} tab={tab} />
-          <NavLink item={uploadItem} pathname={pathname} tab={tab} />
+          <div className="mobile-bottom-nav__side">
+            <NavLink item={bookItem} pathname={pathname} tab={tab} />
+            <NavLink item={uploadItem} pathname={pathname} tab={tab} />
+          </div>
         </div>
       </div>
     </nav>

@@ -51,7 +51,7 @@ export function BackToTop() {
         "fixed left-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border-2 border-gold-brand/50 bg-surface text-teal-brand shadow-sm backdrop-blur hover:border-gold-brand/70 hover:bg-teal-brand hover:text-white hover:shadow-teal-brand/25 sm:left-6 sm:h-12 sm:w-12 md:z-[100]",
         buttonInteraction,
         aboveBottomNav
-          ? "bottom-[calc(6rem+env(safe-area-inset-bottom,0px)+0.75rem)] md:safe-bottom"
+          ? "bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px)+0.5rem)] md:safe-bottom"
           : "safe-bottom",
         visible
           ? "pointer-events-auto translate-y-0 opacity-100"
