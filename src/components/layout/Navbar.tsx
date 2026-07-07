@@ -72,11 +72,11 @@ export function Navbar() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="touch-target md:hidden"
+                  className="touch-target px-2.5 md:hidden"
                   onClick={() => signOut({ callbackUrl: "/" })}
-                  aria-label="خروج از حساب"
                 >
-                  <LogOut size={18} />
+                  <LogOut size={16} className="ml-1" />
+                  خروج
                 </Button>
               )}
             </>
