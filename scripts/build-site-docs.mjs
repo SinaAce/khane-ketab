@@ -1,14 +1,17 @@
 /**
- * Build site documentation entries for /docs page
+ * Build comprehensive site docs — line-by-line code explanations
  * Run: node scripts/build-site-docs.mjs
  */
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import {
+  explainSourceFile,
+  categoryForPath,
+} from "./doc-code-explainer.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
-const MD = path.join(__dirname, "_components-doc.md");
 const OUT = path.join(ROOT, "src/lib/docs/entries.ts");
 
 const entries = [];
@@ -24,190 +27,227 @@ function add(category, title, body, opts = {}) {
   });
 }
 
-// ─── Concepts (from zero) ───
+function globFiles(dir, pattern) {
+  const out = [];
+  if (!fs.existsSync(dir)) return out;
+  for (const name of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, name.name);
+    if (name.isDirectory()) {
+      if (["node_modules", "generated", ".next"].includes(name.name)) continue;
+      out.push(...globFiles(full, pattern));
+    } else if (pattern.test(name.name)) {
+      out.push(path.relative(ROOT, full).replace(/\\/g, "/"));
+    }
+  }
+  return out;
+}
+
+// ═══════════════════════════════════════
+// CONCEPTS — expanded backend & database
+// ═══════════════════════════════════════
 const concepts = [
   {
-    title: "JWT چیست و چه کار می‌کند؟",
-    keywords: ["jwt", "token", "توکن", "نشست", "session", "cookie", "احراز هویت"],
-    body: `JWT مخفف JSON Web Token است — یک «کارت شناسایی دیجital» که سرور بعد از login به مرورگر می‌دهد.
+    title: "معماری کلی پروژه — Frontend + Backend + DB",
+    keywords: ["architecture", "معماری", "fullstack", "ساختار"],
+    body: `## از صفر: این پروژه چطور کار می‌کند؟
 
-**چطور کار می‌کند؟**
-1. کاربر email و password را در login وارد می‌کند
-2. سرور با bcrypt رمز را چک می‌کند
-3. اگر درست بود، یک JWT می‌سازد که داخلش id، name، role کاربر است
-4. JWT داخل cookie مرورگر ذخیره می‌شود (HttpOnly)
-5. هر درخواست بعدی (fetch به API) خودکار cookie را می‌فرستد
-6. سرور JWT را decode می‌کند و می‌فهمد کی login کرده
+**Frontend (مرورگر):** React components در src/components/ + pages در src/app/
+**Backend (سرور):** API routes در src/app/api/ + logic در src/lib/
+**Database:** PostgreSQL روی Neon — schema در prisma/schema.prisma
 
-**در این پروژه:** فایل src/lib/auth.ts — NextAuth با strategy: "jwt"
-**مزیت:** سرور نیاز به ذخیره session در DB ندارد — همه چیز در token است
-**فیلدهای token:** id, name, email, role (USER یا ADMIN)`,
+## جریان یک درخواست (مثال: جستجوی کتاب)
+1. کاربر در BrowseSearch.tsx تایپ می‌کند
+2. fetch('/api/contents?q=حافظ') از مرورگر
+3. src/app/api/contents/route.ts — GET handler
+4. searchSchema (Zod) پارامترها را validate
+5. getApprovedContents() در src/lib/content.ts
+6. prisma.content.findMany() → PostgreSQL
+7. JSON { contents, total } برمی‌گردد
+8. ContentCard.tsx لیست را نشان می‌دهد
+
+## پوشه‌های مهم
+| پوشه | نقش |
+| src/components/ | UI — 51 فایل |
+| src/lib/ | مغز backend — 16 فایل |
+| src/app/api/ | 36 REST endpoint |
+| src/app/*/page.tsx | 13 صفحه |
+| prisma/ | schema + seed |
+| public/ | PWA, sw.js, لوگو |`,
   },
   {
-    title: "NextAuth چیست؟",
-    keywords: ["nextauth", "login", "ورود", "خروج", "signin", "signout", "auth"],
+    title: "JWT چیست؟ — توکن نشست",
+    keywords: ["jwt", "token", "cookie", "session"],
     filePath: "src/lib/auth.ts",
-    body: `NextAuth کتابخانه احراز هویت برای Next.js است.
+    body: `JWT = JSON Web Token — «کارت شناسایی» بعد از login.
 
-**فایل‌ها:**
-- src/lib/auth.ts — تنظیمات NextAuth (providers, callbacks)
-- src/app/api/auth/[...nextauth]/route.ts — API handler
-- src/components/providers/AuthProvider.tsx — wrap کل app
+**کجا ساخته می‌شود؟** src/lib/auth.ts → callbacks.jwt
+**کجا ذخیره می‌شود؟** Cookie مرورگر (HttpOnly)
+**چه چیزی داخلش است؟** id, name, email, role (USER/ADMIN)
+**چطور استفاده می‌شود؟** هر fetch/API → cookie خودکار → auth() session برمی‌گرداند
 
-**Credentials Provider:** login با email/password (نه Google/GitHub)
-**authorize():** کاربر را از DB پیدا می‌کند، bcrypt.compare رمز، blocked چک
-**callbacks.jwt:** اطلاعات user را در token ذخیره می‌کند
-**callbacks.session:** token را به session.user تبدیل می‌کند
-**requireAuth():** در API — اگر login نبود throw UNAUTHORIZED → 401
-**requireAdmin():** اگر role !== ADMIN → 403
-
-**استفاده در کامپوننت:** useSession() از next-auth/react
-**استفاده در server:** auth() از @/lib/auth`,
+**چرا JWT؟** سرور session table لازم ندارد — stateless
+**فایل‌های مرتبط:** auth.ts, AuthProvider.tsx, api/auth/[...nextauth]/route.ts`,
   },
   {
-    title: "bcrypt و هش رمز عبور",
-    keywords: ["bcrypt", "password", "رمز", "hash", "هش", "امنیت"],
-    body: `رمز عبور هرگز plain text در DB ذخیره نمی‌شود!
+    title: "NextAuth — سیستم login/logout",
+    keywords: ["nextauth", "login", "ورود"],
+    filePath: "src/lib/auth.ts",
+    body: `## فایل‌ها
+- **src/lib/auth.ts** — config اصلی
+- **src/app/api/auth/[...nextauth]/route.ts** — export handlers
+- **src/components/providers/AuthProvider.tsx** — SessionProvider wrap
 
-**bcrypt:** الگوریتم one-way hash — از رمز نمی‌توان رمز اصلی را فهمید
-**ثبت‌نام:** bcrypt.hash(password, 10) → passwordHash در User
-**ورود:** bcrypt.compare(password, user.passwordHash) → true/false
-**فایل‌ها:** register/route.ts, auth.ts, profile/route.ts
+## authorize() — قلب login
+1. loginSchema validate email/password
+2. prisma.user.findFirst by email
+3. blocked? → reject
+4. bcrypt.compare password
+5. return { id, name, email, role }
 
-**چرا مهم است؟** اگر DB لو برود، مهاجم رمز واقعی را نمی‌بیند.`,
+## Guards
+- **requireAuth()** — API user → 401
+- **requireAdmin()** — API admin → 403
+- **useSession()** — client component
+- **auth()** — server component / API`,
   },
   {
-    title: "Prisma ORM — ارتباط با دیتابیس",
-    keywords: ["prisma", "orm", "database", "دیتابیس", "query", "مدل"],
-    filePath: "src/lib/prisma.ts",
-    body: `Prisma ORM لایه بین کد TypeScript و PostgreSQL است.
-
-**فایل schema:** prisma/schema.prisma — تعریف جداول (models)
-**generate:** prisma generate → client در src/generated/prisma
-**استفاده:** import { prisma } from "@/lib/prisma"
-**مثال:** prisma.user.findMany(), prisma.content.create({ data: {...} })
-
-**prisma.ts:** singleton client + retry روی connection error
-**seed:** prisma/seed.ts — npm run db:seed — داده اولیه admin و کتاب‌ها
-
-**چرا ORM؟** به جای SQL خام، TypeScript type-safe queries`,
-  },
-  {
-    title: "PostgreSQL — دیتابیس کجاست؟",
-    keywords: ["postgresql", "postgres", "neon", "database", "sql", "جدول"],
+    title: "PostgreSQL + Neon — دیتابیس کجاست؟",
+    keywords: ["postgresql", "neon", "database", "دیتابیس"],
     filePath: "prisma/schema.prisma",
-    body: `PostgreSQL دیتابیس رابطه‌ای است — همه داده‌ها در جداول (tables).
+    body: `## کجا host می‌شود؟
+**Neon PostgreSQL** (cloud) — connection string در env:
+\`DATABASE_URL=postgresql://user:pass@ep-xxx.neon.tech/neondb\`
 
-**کجا host می‌شود؟** Neon PostgreSQL (cloud) — connection string در env: DATABASE_URL
-**۹ مدل اصلی:** User, Content, Category, Review, SavedContent, Notification, Ticket, TicketMessage, PasswordResetToken
-**۵ enum:** Role, ContentType, ContentStatus, NotificationType, TicketStatus
+## فایل‌های DB در پروژه
+| فایل | کار |
+| prisma/schema.prisma | تعریف 9 model + 5 enum |
+| src/lib/prisma.ts | Prisma Client + retry |
+| prisma/seed.ts | داده اولیه — npm run db:seed |
+| src/generated/prisma/ | client auto-generated |
 
-**فایل schema:** prisma/schema.prisma — منبع حقیقت ساختار DB
-**migrate:** prisma migrate dev — اعمال تغییر schema
-**فقط APPROVED contents** در browse عمومی دیده می‌شوند`,
+## 9 Model
+User, Content, Category, Review, SavedContent, Notification, Ticket, TicketMessage, PasswordResetToken
+
+## CLI
+- prisma generate — بعد از تغییر schema
+- prisma migrate dev — migration
+- prisma studio — UI مرور DB`,
   },
   {
-    title: "API و REST — ارتباط Frontend و Backend",
-    keywords: ["api", "rest", "fetch", "endpoint", "http", "get", "post"],
-    body: `API راه ارتباط مرورگر با سرور است. هر API یک URL در src/app/api/
+    title: "Prisma ORM — چطور query می‌زنیم؟",
+    keywords: ["prisma", "orm", "query"],
+    filePath: "src/lib/prisma.ts",
+    body: `## prisma.ts — singleton client
+- DATABASE_URL از env
+- PrismaPg adapter برای PostgreSQL
+- Proxy pattern — یک connection pool
+- withPrismaRetry() — 4 بار retry اگر connection قطع شد
 
-**متدها:**
-- GET — خواندن (لیست کتاب‌ها)
-- POST — ایجاد (ثبت‌نام، آپلود)
-- PATCH — ویرایش جزئی (تأیید محتوا)
-- DELETE — حذف (نظر)
+## مثال‌های query (در lib/content.ts و APIها)
+\`\`\`
+prisma.user.findFirst({ where: { email } })
+prisma.content.findMany({ where: { status: 'APPROVED' } })
+prisma.content.create({ data: { title, authorId, ... } })
+prisma.review.upsert({ where: { userId_contentId }, ... })
+prisma.notification.create({ data: { userId, type, message } })
+\`\`\`
 
-**پاسخ:** JSON مثل { contents: [...], total: 50 }
-**خطاها:** 401=login لازم، 403=admin لازم، 404=یافت نشد، 400=ورودی بد
-
-**۳۶ route** در src/app/api/ — بخش API در راهنما همه را توضیح می‌دهد`,
+## relation
+Content.author → User
+Content.category → Category
+Review.user + Review.content`,
   },
   {
-    title: "React — Client vs Server Component",
-    keywords: ["react", "component", "client", "server", "use client", "state"],
-    body: `React = کتابخانه UI. هر .tsx یک کامپوننت است.
+    title: "API Route در Next.js — چطور ساخته می‌شود؟",
+    keywords: ["api", "route", "endpoint", "nextjs"],
+    body: `## قانون App Router
+مسیر فایل = URL API:
+\`src/app/api/contents/route.ts\` → **GET/POST** \`/api/contents\`
+\`src/app/api/user/profile/route.ts\` → \`/api/user/profile\`
+\`src/app/api/contents/[id]/route.ts\` → \`/api/contents/abc-123\`
 
-**Server Component (پیش‌فرض):** روی سرور render — fetch مستقیم DB — page.tsx
-**Client Component ("use client"):** در مرورگر — state، onClick، useEffect — BrowseSearch
+## ساختار یک route.ts
+\`\`\`
+import { NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
-**۵۱ کامپوننت** در src/components/ — ui, layout, home, content, dashboard, admin, media
+export async function GET(request: Request) {
+  const session = await auth(); // optional
+  // ... logic
+  return NextResponse.json({ data });
+}
+\`\`\`
 
-**Props:** داده از parent به child
-**Hooks:** useState, useEffect, useSession — فقط client`,
+## 36 API در src/app/api/
+دسته auth(3), register(1), contents(4), user(8), admin(14), files(3), misc(2)
+
+## Validation
+همه POST/PATCH → Zod schema از src/lib/validators.ts`,
   },
   {
-    title: "Next.js App Router — صفحات و routing",
-    keywords: ["nextjs", "next", "app router", "routing", "صفحه", "layout"],
-    filePath: "src/app/layout.tsx",
-    body: `Next.js 16 فریم‌ورک React با routing فایل‌محور.
-
-**src/app/** = صفحات
-- page.tsx = یک route (مثلاً /browse)
-- layout.tsx = wrapper مشترک (Navbar, Footer)
-- [id] = dynamic param
-
-**۱۳ صفحه:** /, /browse, /dashboard, /admin, /upload, /auth/*, /content/[id]/read|listen
-
-**API Routes:** src/app/api/**/route.ts — export GET, POST, ...
-
-**SSR:** server component داده را قبل از HTML fetch می‌کند`,
+    title: "bcrypt — امنیت رمز عبور",
+    keywords: ["bcrypt", "password", "hash"],
+    body: `**hash:** register, profile — bcrypt.hash(pw, 10) → passwordHash
+**compare:** login — bcrypt.compare(pw, user.passwordHash)
+**هرگز** password plain در DB نیست`,
   },
   {
-    title: "Zod — اعتبارسنجی ورودی",
-    keywords: ["zod", "validation", "schema", "اعتبارسنجی"],
+    title: "Zod — validation ورودی API",
+    keywords: ["zod", "validation"],
     filePath: "src/lib/validators.ts",
-    body: `Zod کتابخانه validation — قبل از ذخیره در DB ورودی چک می‌شود.
-
-**فایل:** src/lib/validators.ts
-**registerSchema:** name min 2, email, password min 6
-**loginSchema, reviewSchema, searchSchema, profileUpdateSchema, ...**
-
-**استفاده:** schema.safeParse(body) → success یا error با پیام فارسی
-**چرا؟** جلوگیری از داده بد — SQL injection کمتر، UX بهتر`,
+    body: `src/lib/validators.ts — registerSchema, loginSchema, searchSchema, reviewSchema, ...
+safeParse → success یا error.message فارسی → 400`,
   },
   {
-    title: "fetch — فراخوانی API از مرورگر",
-    keywords: ["fetch", "ajax", "request", "درخواست", "json"],
-    body: `fetch() API مرورگر برای HTTP request.
-
-**GET:** fetch('/api/contents?q=حافظ').then(r => r.json())
-**POST JSON:** method POST, headers Content-Type application/json, body JSON.stringify
-**POST FormData:** برای آپلود فایل — body: formData بدون Content-Type
-
-**Cookie session:** با credentials: 'include' (پیش‌فرض same-origin) خودکار فرستاده می‌شود
-**کامپوننت‌های fetch:** BrowseSearch, SaveButton, ReviewForm, ProfileForm, TicketPanel, admin`,
-  },
-  {
-    title: "Tailwind CSS — استایل",
-    keywords: ["tailwind", "css", "style", "کلاس", "رنگ"],
-    filePath: "src/app/globals.css",
-    body: `Tailwind = utility classes در JSX — className="text-teal-brand px-4"
-
-**globals.css:** theme colors — teal-brand, gold-brand, surface, muted
-**Dark mode:** next-themes + class dark:
-**RTL:** dir="rtl" در html
-**cn():** src/lib/utils.ts — ترکیب کلاس‌ها`,
-  },
-  {
-    title: "Storage — ذخیره فایل PDF و صوت",
-    keywords: ["storage", "s3", "upload", "file", "فایل", "pdf"],
+    title: "storage.ts — آپلود فایل کجا می‌رود؟",
+    keywords: ["storage", "s3", "upload", "file"],
     filePath: "src/lib/storage.ts",
-    body: `فایل‌های آپلود در S3 (production) یا disk محلی (dev) ذخیره می‌شوند.
-
-**uploadFile():** buffer → key مثل uploads/userId/uuid.pdf
-**getFileUrl():** URL برای نمایش — /api/files/... یا S3 presigned
-**archive:** fileKey با prefix ext: → embed از archive.org via /api/proxy
-
-**API:** POST /api/upload, GET /api/files/[...key], GET /api/proxy`,
+    body: `**Dev:** local disk — public/uploads/
+**Production:** AWS S3 — env AWS_*
+**uploadFile():** buffer → key
+**getFileUrl():** /api/files/... یا S3 presigned
+**archive:** prefix ext: → /api/proxy?url=archive.org`,
   },
   {
-    title: "TypeScript — تایپ‌های امن",
-    keywords: ["typescript", "type", "interface", "تایپ"],
-    body: `TypeScript = JavaScript + types — خطا قبل از runtime.
-
-**.tsx** = React + TS, **.ts** = pure logic
-**Prisma types:** از generated client
-**Props types:** در هر کامپوننت`,
+    title: "content.ts — منطق query محتوا",
+    keywords: ["content", "query", "browse"],
+    filePath: "src/lib/content.ts",
+    body: `**getApprovedContents()** — browse + GET /api/contents
+**getContentById()** — read/listen pages
+**getRecommendations()** — home page
+**mapContent()** — DB row → JSON shape + averageRating`,
+  },
+  {
+    title: "notifications.ts — سیستم اعلان",
+    keywords: ["notification", "اعلان"],
+    filePath: "src/lib/notifications.ts",
+    body: `createNotification() — وقتی admin approve/reject content/review یا reply ticket
+NotificationList poll می‌کند GET /api/user/notifications`,
+  },
+  {
+    title: "Environment Variables — env چی نیاز است؟",
+    keywords: ["env", "environment", "DATABASE_URL"],
+    body: `**DATABASE_URL** — PostgreSQL Neon (الزامی)
+**AUTH_SECRET** — NextAuth JWT sign (الزامی)
+**AWS_*** — S3 storage (production)
+**SMTP_*** — email forgot-password
+**NEXTAUTH_URL** — URL سایت`,
+  },
+  {
+    title: "گردش وضعیت Content — PENDING → APPROVED",
+    keywords: ["pending", "approved", "workflow"],
+    body: `1. POST /api/upload → status=PENDING
+2. GET /api/user/uploads — user می‌بیند
+3. GET /api/admin/pending — admin صف
+4. PATCH approve → APPROVED + notification
+5. GET /api/contents — عمومی visible`,
+  },
+  {
+    title: "React Client vs Server Component",
+    keywords: ["react", "client", "server", "use client"],
+    body: `"use client" → state, fetch, events — BrowseSearch, SaveButton
+بدون use client → server — page.tsx, HomeSections — fetch مستقیم prisma/lib`,
   },
 ];
 
@@ -215,212 +255,152 @@ for (const c of concepts) {
   add("concepts", c.title, c.body, { keywords: c.keywords, filePath: c.filePath });
 }
 
-// ─── Database models ───
-const models = [
-  {
-    title: "مدل User — کاربران",
-    filePath: "prisma/schema.prisma",
-    keywords: ["user", "کاربر", "email", "role", "admin", "blocked"],
-    body: `جدول User — همه کاربران سایت
+// ═══════════════════════════════════════
+// DATABASE — each model detailed
+// ═══════════════════════════════════════
+const schema = fs.readFileSync(path.join(ROOT, "prisma/schema.prisma"), "utf8");
 
-**فیلدها:**
-- id (cuid) — شناسه یکتا
-- name — نام نمایشی
-- email (unique) — ایمیل login
-- passwordHash — رمز هش‌شده (هرگز plain)
-- role — USER یا ADMIN
-- blocked — true = login ممنوع
-- createdAt, updatedAt
+add(
+  "database",
+  "schema.prisma — نقشه کامل دیتابیس",
+  `## این فایل چیست؟
+**مسیر:** prisma/schema.prisma
+**چرا؟** منبع حقیقت (single source of truth) برای ساختار PostgreSQL
+**بعد از edit:** npm run db:generate && prisma migrate dev
 
-**روابط:** contents, reviews, saved, notifications, tickets
-**seed admin:** admin@marketplace.local / admin123`,
-  },
-  {
-    title: "مدل Content — کتاب و پادکست",
-    keywords: ["content", "ebook", "audiobook", "محتوا", "کتاب", "pending", "approved"],
-    body: `جدول Content — هر PDF یا فایل صوتی
+## توضیح خط‌به‌خط فایل schema
 
-**فیلدها:** title, description, type (EBOOK|AUDIOBOOK), status (PENDING|APPROVED|REJECTED)
-**fileKey** — مسیر فایل در storage
-**coverKey** — تصویر جلد (optional)
-**authorId** → User, **categoryId** → Category
-**downloadCount** — تعداد بازدید read/listen
+${schema
+  .split("\n")
+  .map((line, i) => {
+    const t = line.trim();
+    if (!t || t.startsWith("//")) return null;
+    let exp = "تعریف Prisma";
+    if (t.startsWith("model ")) exp = `جدول DB: ${t.replace("model ", "").replace(" {", "")} — رکوردها اینجا ذخیره می‌شوند`;
+    if (t.startsWith("enum ")) exp = `enum — مقادیر ثابت مجاز`;
+    if (t.includes("@id")) exp = "Primary key — شناسه یکتا";
+    if (t.includes("@unique")) exp = "Unique — تکراری ممنوع";
+    if (t.includes("@relation")) exp = "Foreign key — ارتباط بین جداول";
+    if (t.includes("@default")) exp = "مقدار پیش‌فرض";
+    if (t.includes("@@index")) exp = "Index — سرعت query";
+    return `- **خط ${i + 1}:** \`${t.slice(0, 80)}\` → ${exp}`;
+  })
+  .filter(Boolean)
+  .join("\n")}`,
+  { filePath: "prisma/schema.prisma", keywords: ["schema", "prisma", "model", "enum"] },
+);
 
-**گردش کار:** upload → PENDING → admin approve → APPROVED → در browse`,
+const modelDocs = [
+  {
+    title: "User — جدول کاربران",
+    keywords: ["user", "کاربر", "email", "role"],
+    body: `**فیلدها:** id, name, email(unique), passwordHash, role(USER|ADMIN), blocked
+**روابط:** contents[], reviews[], saved[], notifications[], tickets[]
+**API:** register, profile, admin/users
+**seed:** admin@marketplace.local / admin123`,
   },
   {
-    title: "مدل Category — دسته‌بندی",
-    keywords: ["category", "دسته", "slug"],
-    body: `name, slug (unique), description — مثلاً «ادبیات» slug: adabiat
-**API:** GET /api/categories`,
+    title: "Content — کتاب و پادکست",
+    keywords: ["content", "ebook", "audiobook"],
+    body: `**type:** EBOOK | AUDIOBOOK
+**status:** PENDING | APPROVED | REJECTED
+**fileKey** — مسیر PDF/audio در storage
+**authorId, categoryId** — FK
+**downloadCount** — increment در read/listen`,
   },
   {
-    title: "مدل Review — نظرات",
-    keywords: ["review", "نظر", "rating", "ستاره"],
-    body: `rating 1-5, comment, status (مثل ContentStatus)
-**unique:** یک نظر per user per content
-**POST** /api/contents/[id]/reviews → PENDING تا admin تأیید`,
+    title: "Review — نظرات",
+    keywords: ["review", "rating"],
+    body: `rating 1-5, comment, status
+@@unique([userId, contentId]) — یک نظر per user per book`,
   },
   {
-    title: "مدل SavedContent — کتابخانه شخصی",
-    keywords: ["saved", "bookmark", "ذخیره", "کتابخانه"],
-    body: `userId + contentId — bookmark
-**API:** /api/user/saved, SaveButton.tsx`,
+    title: "SavedContent — bookmark",
+    keywords: ["saved", "bookmark"],
+    body: `userId + contentId — کتابخانه شخصی`,
   },
   {
-    title: "مدل Notification — اعلان",
-    keywords: ["notification", "اعلان", "notify"],
-    body: `type: CONTENT_APPROVED, CONTENT_REJECTED, REVIEW_*, TICKET_REPLY
-**read:** boolean — NotificationList, badge در Navbar`,
+    title: "Notification — اعلان",
+    keywords: ["notification"],
+    body: `type enum, message, read, relatedId`,
   },
   {
-    title: "مدل Ticket و TicketMessage — پشتیبانی",
-    keywords: ["ticket", "تیکت", "پشتیبانی", "support"],
+    title: "Ticket + TicketMessage",
+    keywords: ["ticket", "پشتیبانی"],
     body: `Ticket: subject, status OPEN|ANSWERED|CLOSED
-TicketMessage: body, isStaff (پاسخ admin)
-**User API:** /api/user/tickets — **Admin:** /api/admin/tickets`,
-  },
-  {
-    title: "مدل PasswordResetToken",
-    keywords: ["reset", "token", "بازیابی رمز"],
-    body: `tokenHash, expiresAt (۱ ساعت) — forgot-password flow`,
+Message: body, isStaff (admin reply)`,
   },
 ];
 
-for (const m of models) {
-  add("database", m.title, m.body, { keywords: m.keywords, filePath: m.filePath });
+for (const m of modelDocs) {
+  add("database", m.title, m.body, { keywords: m.keywords, filePath: "prisma/schema.prisma" });
 }
 
-// ─── API routes ───
-const apis = [
-  { path: "/api/register", method: "POST", auth: "عمومی", title: "ثبت‌نام", body: "POST JSON: name, email, password → user ایجاد → 201. فایل: src/app/api/register/route.ts. صفحه: auth/register", keywords: ["register", "ثبت نام"] },
-  { path: "/api/auth/[...nextauth]", method: "GET/POST", auth: "عمومی", title: "NextAuth — ورود و session", body: "signIn credentials → JWT cookie. src/lib/auth.ts. login/page.tsx", keywords: ["nextauth", "login", "ورود"] },
-  { path: "/api/auth/forgot-password", method: "POST", auth: "عمومی", title: "فراموشی رمز", body: "POST { email } → token + email. forgot-password/page.tsx", keywords: ["forgot", "فراموشی"] },
-  { path: "/api/auth/reset-password", method: "POST", auth: "عمومی", title: "بازیابی رمز", body: "POST { token, password }. reset-password/page.tsx", keywords: ["reset", "بازیابی"] },
-  { path: "/api/contents", method: "GET", auth: "عمومی", title: "لیست و جستجوی محتوا", body: "Query: q, type, category, sort, page, pageSize. فقط APPROVED. BrowseSearch.tsx → fetch. پاسخ: contents[], total, totalPages", keywords: ["contents", "browse", "جستجو", "list"] },
-  { path: "/api/contents/[id]", method: "GET", auth: "عمومی", title: "جزئیات یک محتوا", body: "Path id. content + reviews. read/listen pages (server-side lib/content)", keywords: ["content", "detail", "جزئیات"] },
-  { path: "/api/contents/[id]/reviews", method: "POST", auth: "login", title: "ثبت نظر", body: "POST { rating 1-5, comment? }. ReviewForm.tsx. status PENDING", keywords: ["review", "نظر", "rating"] },
-  { path: "/api/contents/[id]/reviews/[reviewId]", method: "DELETE", auth: "login", title: "حذف نظر", body: "صاحب یا admin. ReviewList.tsx", keywords: ["delete", "review"] },
-  { path: "/api/categories", method: "GET", auth: "عمومی", title: "لیست دسته‌ها", body: "categories[]. upload/page, browse filter", keywords: ["category", "دسته"] },
-  { path: "/api/recommendations", method: "GET", auth: "عمومی", title: "پیشنهاد هوشمند", body: "max 6. logged-in: based on reviews. home page.tsx", keywords: ["recommend", "پیشنهاد"] },
-  { path: "/api/upload", method: "POST", auth: "login", title: "آپلود PDF/صوت", body: "FormData: title, type, categoryId, file. status PENDING. upload/page.tsx → storage.ts", keywords: ["upload", "آپلود", "pdf"] },
-  { path: "/api/files/[...key]", method: "GET", auth: "عمومی", title: "سرو فایل", body: "Stream PDF/audio. PdfViewer, AudioPlayer", keywords: ["files", "download", "pdf"] },
-  { path: "/api/proxy", method: "GET", auth: "عمومی", title: "پروکسی archive.org", body: "?url= archive.org only. CORS bypass", keywords: ["proxy", "archive"] },
-  { path: "/api/user/profile", method: "GET/PATCH", auth: "login", title: "پروفایل کاربر", body: "GET: user+stats. PATCH: name یا password. ProfileForm, dashboard", keywords: ["profile", "پروفایل"] },
-  { path: "/api/user/saved", method: "GET/POST", auth: "login", title: "کتابخانه — لیست و افزودن", body: "POST { contentId }. SaveButton, dashboard", keywords: ["saved", "bookmark"] },
-  { path: "/api/user/saved/[contentId]", method: "GET/DELETE", auth: "login", title: "وضعیت bookmark", body: "GET saved:true/false. DELETE unbookmark. SaveButton", keywords: ["saved"] },
-  { path: "/api/user/uploads", method: "GET", auth: "login", title: "آپلودهای من", body: "همه status. dashboard tab uploads", keywords: ["uploads", "آپلود"] },
-  { path: "/api/user/notifications", method: "GET/PATCH", auth: "login", title: "اعلان‌ها", body: "GET 50 + unreadCount. PATCH mark all read. NotificationList", keywords: ["notification", "اعلان"] },
-  { path: "/api/user/notifications/[id]/read", method: "PATCH", auth: "login", title: "خواندن یک اعلان", body: "PATCH. NotificationList", keywords: ["notification"] },
-  { path: "/api/user/tickets", method: "GET/POST", auth: "login", title: "تیکت پشتیبانی", body: "POST subject+body. TicketPanel", keywords: ["ticket", "تیکت"] },
-  { path: "/api/user/tickets/[id]", method: "GET/POST", auth: "login", title: "مکالمه تیکت", body: "GET messages. POST reply. TicketPanel", keywords: ["ticket"] },
-  { path: "/api/admin/stats", method: "GET", auth: "admin", title: "آمار KPI", body: "users, contents, reviews stats. AdminStats.tsx", keywords: ["stats", "آمار", "admin"] },
-  { path: "/api/admin/pending", method: "GET", auth: "admin", title: "صف تأیید", body: "contents + reviews PENDING. admin/page pending tab", keywords: ["pending", "تأیید", "moderation"] },
-  { path: "/api/admin/contents/[id]/approve", method: "PATCH", auth: "admin", title: "تأیید محتوا", body: "APPROVED + notification. admin page", keywords: ["approve", "تأیید"] },
-  { path: "/api/admin/contents/[id]/reject", method: "PATCH", auth: "admin", title: "رد محتوا", body: "REJECTED + notification", keywords: ["reject", "رد"] },
-  { path: "/api/admin/reviews/[id]/approve", method: "PATCH", auth: "admin", title: "تأیید نظر", keywords: ["review", "approve"] },
-  { path: "/api/admin/reviews/[id]/reject", method: "PATCH", auth: "admin", title: "رد نظر", keywords: ["review", "reject"] },
-  { path: "/api/admin/users", method: "GET", auth: "admin", title: "لیست کاربران", body: "?page&q. AdminUserList", keywords: ["users", "کاربران"] },
-  { path: "/api/admin/users/[id]", method: "PATCH", auth: "admin", title: "ویرایش کاربر", body: "role, blocked, password. AdminUserList", keywords: ["user", "block"] },
-  { path: "/api/admin/users/[id]/reset-password", method: "POST", auth: "admin", title: "ریست رمز توسط admin", keywords: ["password", "reset"] },
-  { path: "/api/admin/top-users", method: "GET", auth: "admin", title: "Leaderboard", body: "?category=uploads|reviews|saved|downloads. AdminTopUsers", keywords: ["top", "leaderboard"] },
-  { path: "/api/admin/tickets", method: "GET", auth: "admin", title: "همه تیکت‌ها", body: "?status. AdminTickets", keywords: ["ticket", "admin"] },
-  { path: "/api/admin/tickets/[id]", method: "GET/PATCH/POST", auth: "admin", title: "مدیریت تیکت", body: "reply staff, change status. AdminTickets", keywords: ["ticket"] },
-  { path: "/api/admin/import-archive", method: "POST", auth: "admin", title: "واردات archive.org", body: "~100 کتاب. admin import button", keywords: ["import", "archive"] },
-  { path: "/api/admin/contents", method: "GET", auth: "admin", title: "لیست PENDING contents", keywords: ["admin", "contents"] },
-  { path: "/api/admin/reviews", method: "GET", auth: "admin", title: "لیست PENDING reviews", keywords: ["admin", "reviews"] },
-];
+// ═══════════════════════════════════════
+// SOURCE FILES — line-by-line
+// ═══════════════════════════════════════
+const sourceFiles = [
+  ...globFiles(path.join(ROOT, "src/components"), /\.tsx$/),
+  ...globFiles(path.join(ROOT, "src/lib"), /\.ts$/),
+  ...globFiles(path.join(ROOT, "src/app/api"), /route\.ts$/),
+  ...globFiles(path.join(ROOT, "src/app"), /page\.tsx$/),
+  ...globFiles(path.join(ROOT, "src/hooks"), /\.ts$/),
+  ...globFiles(path.join(ROOT, "prisma"), /\.(ts|prisma)$/),
+].filter((f) => !f.includes("components/docs/Docs"));
 
-for (const a of apis) {
-  add("api", `${a.method} ${a.path}`, `${a.title}\n\n**دسترسی:** ${a.auth}\n\n${a.body}`, {
-    filePath: `src/app/api${a.path.replace("[...nextauth]", "[...nextauth]").replace(/\[(\w+)\]/g, "[$1]")}/route.ts`.replace("/route.ts/route.ts", "/route.ts"),
-    keywords: [...(a.keywords || []), a.path, a.method, "api"],
-    id: `api-${a.path.replace(/\//g, "-").replace(/[\[\]]/g, "")}`,
+for (const rel of sourceFiles.sort()) {
+  const full = path.join(ROOT, rel);
+  let content;
+  try {
+    content = fs.readFileSync(full, "utf8");
+  } catch {
+    continue;
+  }
+  if (content.length > 80000) continue; // skip huge generated
+
+  const cat = categoryForPath(rel);
+  const title = path.basename(rel, path.extname(rel));
+  const body = explainSourceFile(ROOT, rel, content);
+  const keywords = [
+    title,
+    rel,
+    cat,
+    ...rel.split("/").filter(Boolean),
+  ];
+
+  add(cat, title, body, {
+    id: `src-${rel.replace(/[^a-z0-9]+/gi, "-")}`,
+    filePath: rel,
+    keywords,
   });
 }
 
-// ─── Flows ───
+// ═══════════════════════════════════════
+// FLOWS
+// ═══════════════════════════════════════
 const flows = [
-  { title: "جریان ثبت‌نام و ورود", keywords: ["flow", "login", "register"], body: "1. POST /api/register 2. redirect login 3. signIn → JWT 4. session در cookie" },
-  { title: "جریان مرور و مطالعه کتاب", keywords: ["browse", "read", "pdf"], body: "GET /api/contents → ContentCard → /content/[id]/read → PdfViewer → /api/files یا /api/proxy" },
-  { title: "جریان آپلود و تأیید", keywords: ["upload", "approve"], body: "GET categories → POST upload PENDING → admin pending → PATCH approve → notification" },
-  { title: "جریان نظرات", keywords: ["review"], body: "POST review PENDING → admin approve → نمایش در ReviewList" },
-  { title: "جریان تیکت پشتیبانی", keywords: ["ticket"], body: "User POST ticket → Admin GET tickets → POST reply → TICKET_REPLY notify" },
-  { title: "نقشه پوشه‌های پروژه", keywords: ["structure", "ساختار", "پوشه"], body: `src/components/ — 51 UI\nsrc/lib/ — 16 logic\nsrc/app/ — pages + api\nprisma/ — DB schema\npublic/ — PWA` },
+  {
+    title: "جریان کامل Login",
+    body: `login/page → signIn('credentials') → POST /api/auth/[...nextauth] → authorize → JWT cookie → dashboard`,
+  },
+  {
+    title: "جریان Browse → Read PDF",
+    body: `browse/page SSR → BrowseSearch fetch /api/contents → ContentCard → /content/[id]/read → PdfViewer → /api/files`,
+  },
+  {
+    title: "جریان Upload → Admin Approve",
+    body: `upload FormData POST /api/upload → PENDING → admin/pending → PATCH approve → notification → browse visible`,
+  },
 ];
 
 for (const f of flows) {
-  add("flows", f.title, f.body, { keywords: f.keywords });
+  add("flows", f.title, f.body, { keywords: ["flow", "جریان"] });
 }
 
-// ─── Parse components markdown ───
-function parseComponentsMd(text) {
-  const catMap = {
-    "ui/": "frontend",
-    "layout/": "frontend",
-    "home/": "frontend",
-    "content/": "frontend",
-    "dashboard/": "frontend",
-    "admin/": "frontend",
-    "media/": "frontend",
-    "providers/": "frontend",
-    "lib/": "backend",
-    "hooks/": "backend",
-    "app pages/": "pages",
-    "prisma/": "database",
-    "config/": "config",
-  };
-
-  let currentCat = "frontend";
-  const blocks = text.split(/^---$/m);
-
-  for (const block of blocks) {
-    const sectionMatch = block.match(/^## (.+)$/m);
-    if (sectionMatch) {
-      const sec = sectionMatch[1].trim();
-      currentCat = catMap[sec] || currentCat;
-      continue;
-    }
-
-    const fileMatch = block.match(/^### `([^`]+)`/m);
-    if (!fileMatch) continue;
-
-    const fullPath = fileMatch[1].replace(/\\/g, "/");
-    const shortPath = fullPath.replace(/^.*?(src\/|prisma\/)/, "$1");
-    const fileName = shortPath.split("/").pop()?.replace(/\.tsx?$/, "") || shortPath;
-
-    let body = block
-      .replace(/^### `[^`]+`\s*/m, "")
-      .replace(/\*\*هدف:\*\*/g, "**هدف:**")
-      .trim();
-
-    const kw = [fileName, shortPath, fullPath.split("/").slice(-2).join(" ")];
-
-    add(currentCat, fileName, body, {
-      filePath: shortPath,
-      keywords: kw.filter(Boolean),
-      id: `file-${shortPath.replace(/[^a-z0-9]+/gi, "-")}`,
-    });
-  }
-}
-
-if (fs.existsSync(MD)) {
-  parseComponentsMd(fs.readFileSync(MD, "utf8"));
-}
-
-// ─── lib files extra detail ───
-const libExtras = [
-  { file: "src/lib/content.ts", title: "content.ts — منطق محتوا", body: "getApprovedContents, getContentById, getRecommendations, mapContent. queries Prisma + averageRating", keywords: ["content", "query"] },
-  { file: "src/lib/notifications.ts", title: "notifications.ts — ایجاد اعلان", body: "createNotification on approve/reject. types CONTENT_*, REVIEW_*, TICKET_REPLY", keywords: ["notification"] },
-  { file: "src/lib/email.ts", title: "email.ts — SMTP", body: "sendPasswordResetEmail — nodemailer. env SMTP_*", keywords: ["email", "smtp"] },
-];
-
-for (const l of libExtras) {
-  add("backend", l.title, l.body, { filePath: l.file, keywords: l.keywords });
-}
-
-// ─── Write output ───
-const out = `/** Auto-generated by scripts/build-site-docs.mjs — do not edit manually */
+// ═══════════════════════════════════════
+// WRITE
+// ═══════════════════════════════════════
+const out = `/** Auto-generated — node scripts/build-site-docs.mjs */
 import type { DocEntry } from "./types";
 
 export const DOC_ENTRIES: DocEntry[] = ${JSON.stringify(entries, null, 2)} as DocEntry[];
@@ -430,4 +410,4 @@ export const DOC_COUNT = ${entries.length};
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, out, "utf8");
-console.log(`✅ Generated ${entries.length} doc entries → ${OUT}`);
+console.log(`✅ ${entries.length} entries (${(fs.statSync(OUT).size / 1024).toFixed(0)} KB) → ${OUT}`);
