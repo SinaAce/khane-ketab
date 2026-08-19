@@ -9,6 +9,11 @@ import {
   explainSourceFile,
   categoryForPath,
 } from "./doc-code-explainer.mjs";
+import {
+  DEEP_OVERVIEWS,
+  DEEP_FILES,
+  AUTH_VALIDATORS_BODY,
+} from "./doc-deep-dives.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
@@ -255,40 +260,14 @@ for (const c of concepts) {
   add("concepts", c.title, c.body, { keywords: c.keywords, filePath: c.filePath });
 }
 
+// Deep-dive overview pages (database + auth)
+for (const o of DEEP_OVERVIEWS) {
+  add(o.category, o.title, o.body, { id: o.id, keywords: o.keywords });
+}
+
 // ═══════════════════════════════════════
 // DATABASE — each model detailed
 // ═══════════════════════════════════════
-const schema = fs.readFileSync(path.join(ROOT, "prisma/schema.prisma"), "utf8");
-
-add(
-  "database",
-  "schema.prisma — نقشه کامل دیتابیس",
-  `## این فایل چیست؟
-**مسیر:** prisma/schema.prisma
-**چرا؟** منبع حقیقت (single source of truth) برای ساختار PostgreSQL
-**بعد از edit:** npm run db:generate && prisma migrate dev
-
-## توضیح خط‌به‌خط فایل schema
-
-${schema
-  .split("\n")
-  .map((line, i) => {
-    const t = line.trim();
-    if (!t || t.startsWith("//")) return null;
-    let exp = "تعریف Prisma";
-    if (t.startsWith("model ")) exp = `جدول DB: ${t.replace("model ", "").replace(" {", "")} — رکوردها اینجا ذخیره می‌شوند`;
-    if (t.startsWith("enum ")) exp = `enum — مقادیر ثابت مجاز`;
-    if (t.includes("@id")) exp = "Primary key — شناسه یکتا";
-    if (t.includes("@unique")) exp = "Unique — تکراری ممنوع";
-    if (t.includes("@relation")) exp = "Foreign key — ارتباط بین جداول";
-    if (t.includes("@default")) exp = "مقدار پیش‌فرض";
-    if (t.includes("@@index")) exp = "Index — سرعت query";
-    return `- **خط ${i + 1}:** \`${t.slice(0, 80)}\` → ${exp}`;
-  })
-  .filter(Boolean)
-  .join("\n")}`,
-  { filePath: "prisma/schema.prisma", keywords: ["schema", "prisma", "model", "enum"] },
-);
 
 const modelDocs = [
   {
@@ -395,6 +374,34 @@ const flows = [
 
 for (const f of flows) {
   add("flows", f.title, f.body, { keywords: ["flow", "جریان"] });
+}
+
+// Auth validators deep doc
+add("concepts", "validators — login/register schemas", AUTH_VALIDATORS_BODY, {
+  id: "deep-auth-validators",
+  filePath: "src/lib/validators.ts",
+  keywords: ["validators", "zod", "loginSchema", "registerSchema", "login", "register"],
+});
+
+// Replace entries with deep line-by-line docs
+for (const [filePath, deep] of Object.entries(DEEP_FILES)) {
+  const idx = entries.findIndex((e) => e.filePath === filePath);
+  let category = categoryForPath(filePath);
+  if (filePath.includes("/auth/") && filePath.endsWith("page.tsx")) category = "pages";
+  if (filePath === "src/lib/auth.ts" || filePath.includes("password-reset") || filePath.includes("AuthProvider")) category = "concepts";
+  const payload = {
+    category,
+    title: deep.title,
+    body: deep.body,
+    filePath,
+    keywords: [...(deep.keywords || []), filePath, "خط به خط"],
+    id: `deep-${filePath.replace(/[^a-z0-9]+/gi, "-")}`,
+  };
+  if (idx >= 0) {
+    entries[idx] = { ...entries[idx], ...payload };
+  } else {
+    add(payload.category, payload.title, payload.body, payload);
+  }
 }
 
 // ═══════════════════════════════════════
