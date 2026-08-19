@@ -99,6 +99,14 @@ export function DocsApp() {
   return (
     <div className="mx-auto max-w-3xl px-4 pb-28 pt-4 sm:max-w-4xl sm:px-6 md:pb-8">
       <div className="mb-4 text-center">
+        <a
+          href="/docs/presentation.pdf"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mb-3 inline-flex items-center gap-2 rounded-xl border-2 border-gold-brand/60 bg-gold-brand/10 px-4 py-2.5 text-sm font-bold text-teal-brand transition hover:bg-gold-brand/20"
+        >
+          📄 دانلود PDF متن ارائه دفاع (از اول تا آخر)
+        </a>
         <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-teal-brand/10 px-3 py-1 text-xs font-medium text-teal-brand">
           <BookOpen size={14} />
           {totalCount || "…"} بخش · توضیح خط‌به‌خط
