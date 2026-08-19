@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { LogOut, Smartphone } from "lucide-react";
+import { LogOut, Smartphone, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { SiteLogo } from "@/components/layout/SiteLogo";
 import { UserAccountButton } from "@/components/layout/UserAccountButton";
@@ -16,6 +16,7 @@ const baseLinks = [
   { href: "/", label: "خانه" },
   { href: "/browse", label: "کتاب و پادکست" },
   { href: "/upload", label: "آپلود" },
+  { href: "/docs", label: "راهنما" },
 ];
 
 const downloadLink = { href: "/download", label: "دانلود اپ" };
@@ -60,6 +61,17 @@ export function Navbar() {
         </nav>
 
         <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href="/docs"
+            className={cn(
+              "inline-flex items-center gap-1 rounded-xl px-2 py-1.5 text-xs font-semibold text-teal-brand transition hover:bg-teal-brand/10 md:hidden",
+              pathname === "/docs" && "bg-teal-brand/10",
+            )}
+            aria-label="راهنمای پروژه"
+          >
+            <BookOpen size={15} className="shrink-0" />
+            راهنما
+          </Link>
           {!isAppShell && (
             <Link
               href="/download"
