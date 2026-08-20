@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { isPrismaConnectionError, prisma, withPrismaRetry } from "@/lib/prisma";
-import { buildFileKey, StorageNotConfiguredError, uploadFile } from "@/lib/storage";
+import {
+  buildDbFileKey,
+  buildFileKey,
+  MAX_DB_FILE_BYTES,
+  shouldStoreInDatabase,
+  uploadFile,
+} from "@/lib/storage";
 import { contentUploadSchema } from "@/lib/validators";
 
 function isAllowedUploadFile(type: "EBOOK" | "AUDIOBOOK", file: File) {
@@ -75,10 +81,62 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const fileKey = buildFileKey(session.user.id, file.name);
     const contentType =
       file.type ||
       (parsed.data.type === "EBOOK" ? "application/pdf" : "audio/mpeg");
+
+    const storeInDatabase = shouldStoreInDatabase();
+
+    if (storeInDatabase && buffer.length > MAX_DB_FILE_BYTES) {
+      return NextResponse.json(
+        { error: "حداکثر حجم فایل روی سرور ۴ مگابایت است. فایل کوچک‌تری انتخاب کنید." },
+        { status: 400 },
+      );
+    }
+
+    let fileKey = buildFileKey(session.user.id, file.name);
+
+    if (storeInDatabase) {
+      const created = await withPrismaRetry(() =>
+        prisma.content.create({
+          data: {
+            title: parsed.data.title,
+            description: parsed.data.description,
+            type: parsed.data.type,
+            categoryId: parsed.data.categoryId,
+            authorId: session.user.id,
+            fileKey: "db:pending",
+            fileData: buffer,
+            fileMimeType: contentType,
+            fileSize: file.size,
+            status: "PENDING",
+          },
+          include: {
+            category: true,
+            author: { select: { id: true, name: true } },
+          },
+        }),
+      );
+
+      const content = await withPrismaRetry(() =>
+        prisma.content.update({
+          where: { id: created.id },
+          data: { fileKey: buildDbFileKey(created.id) },
+          include: {
+            category: true,
+            author: { select: { id: true, name: true } },
+          },
+        }),
+      );
+
+      return NextResponse.json(
+        {
+          content: { ...content, fileData: undefined },
+          message: "محتوا با موفقیت آپلود شد و در انتظار تأیید مدیر است.",
+        },
+        { status: 201 },
+      );
+    }
 
     await uploadFile(buffer, fileKey, contentType);
 
@@ -91,6 +149,7 @@ export async function POST(request: Request) {
           categoryId: parsed.data.categoryId,
           authorId: session.user.id,
           fileKey,
+          fileMimeType: contentType,
           fileSize: file.size,
           status: "PENDING",
         },
@@ -118,13 +177,6 @@ export async function POST(request: Request) {
             ? "اتصال به دیتابیس برقرار نیست. لطفاً چند لحظه بعد دوباره تلاش کنید."
             : "اتصال به دیتابیس برقرار نیست. Prisma Dev را اجرا کنید و سرور را ری‌استارت کنید.",
         },
-        { status: 503 },
-      );
-    }
-
-    if (error instanceof StorageNotConfiguredError) {
-      return NextResponse.json(
-        { error: "ذخیره‌سازی فایل روی سرور پیکربندی نشده است. با پشتیبانی تماس بگیرید." },
         { status: 503 },
       );
     }

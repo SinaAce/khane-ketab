@@ -113,6 +113,8 @@ model Content {
   status        ContentStatus @default(PENDING)
   fileKey       String
   coverKey      String?
+  fileData      Bytes?
+  fileMimeType  String?
   fileSize      Int?
   duration      Int?
   authorId      String

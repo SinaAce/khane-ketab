@@ -43,6 +43,25 @@ export class StorageNotConfiguredError extends Error {
   }
 }
 
+/** Max upload when storing bytes in PostgreSQL (Vercel hobby body limit ~4.5MB). */
+export const MAX_DB_FILE_BYTES = 4 * 1024 * 1024;
+
+export function shouldStoreInDatabase() {
+  return !useS3() && !useBlob() && isVercelRuntime();
+}
+
+export function isDbFileKey(key: string) {
+  return key.startsWith("db:");
+}
+
+export function buildDbFileKey(contentId: string) {
+  return `db:${contentId}`;
+}
+
+export function getDbContentId(key: string) {
+  return key.slice("db:".length);
+}
+
 export async function uploadFile(buffer: Buffer, key: string, contentType: string) {
   if (useS3()) {
     const client = getS3Client();
@@ -66,7 +85,7 @@ export async function uploadFile(buffer: Buffer, key: string, contentType: strin
     return `blob:${blob.url}`;
   }
 
-  if (isVercelRuntime()) {
+  if (shouldStoreInDatabase()) {
     throw new StorageNotConfiguredError();
   }
 
@@ -112,6 +131,10 @@ export async function getFileUrl(key: string) {
 
   if (isBlobFileKey(key)) {
     return getBlobUrl(key);
+  }
+
+  if (isDbFileKey(key)) {
+    return `/api/files/${encodeURIComponent(key)}`;
   }
 
   if (useS3()) {
