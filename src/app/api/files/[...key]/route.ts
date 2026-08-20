@@ -1,6 +1,6 @@
 import { readFile } from "fs/promises";
 import { NextResponse } from "next/server";
-import { getFileUrl, getLocalFilePath } from "@/lib/storage";
+import { getFileUrl, getLocalFilePath, isBlobFileKey, getBlobUrl } from "@/lib/storage";
 
 type Params = { params: Promise<{ key: string[] }> };
 
@@ -9,7 +9,11 @@ export async function GET(_request: Request, { params }: Params) {
     const { key } = await params;
     const fileKey = decodeURIComponent(key.join("/"));
 
-    if (process.env.AWS_ACCESS_KEY_ID) {
+    if (isBlobFileKey(fileKey)) {
+      return NextResponse.redirect(getBlobUrl(fileKey));
+    }
+
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && process.env.AWS_S3_BUCKET) {
       const url = await getFileUrl(fileKey);
       return NextResponse.redirect(url);
     }

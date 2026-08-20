@@ -4,6 +4,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { put } from "@vercel/blob";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 
@@ -17,6 +18,14 @@ function useS3() {
   );
 }
 
+function useBlob() {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+}
+
+function isVercelRuntime() {
+  return Boolean(process.env.VERCEL);
+}
+
 function getS3Client() {
   return new S3Client({
     region: process.env.AWS_REGION || "eu-central-1",
@@ -25,6 +34,13 @@ function getS3Client() {
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
     },
   });
+}
+
+export class StorageNotConfiguredError extends Error {
+  constructor() {
+    super("STORAGE_NOT_CONFIGURED");
+    this.name = "StorageNotConfiguredError";
+  }
 }
 
 export async function uploadFile(buffer: Buffer, key: string, contentType: string) {
@@ -41,10 +57,31 @@ export async function uploadFile(buffer: Buffer, key: string, contentType: strin
     return key;
   }
 
+  if (useBlob()) {
+    const blob = await put(key, buffer, {
+      access: "public",
+      contentType,
+      addRandomSuffix: false,
+    });
+    return `blob:${blob.url}`;
+  }
+
+  if (isVercelRuntime()) {
+    throw new StorageNotConfiguredError();
+  }
+
   const filePath = path.join(UPLOAD_DIR, key);
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, buffer);
   return key;
+}
+
+export function isBlobFileKey(key: string) {
+  return key.startsWith("blob:");
+}
+
+export function getBlobUrl(key: string) {
+  return key.slice("blob:".length);
 }
 
 export function isExternalFileKey(key: string) {
@@ -71,6 +108,10 @@ export async function getFileUrl(key: string) {
   if (isExternalFileKey(key)) {
     const raw = key.slice(4);
     return `/api/proxy?url=${encodeURIComponent(raw)}`;
+  }
+
+  if (isBlobFileKey(key)) {
+    return getBlobUrl(key);
   }
 
   if (useS3()) {
